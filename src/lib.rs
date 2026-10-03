@@ -1,4 +1,5 @@
 mod compile;
+mod print;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
