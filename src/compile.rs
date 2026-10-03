@@ -62,7 +62,7 @@ impl ArtifactBuilder {
         }
         Ok(self.artifact)
     }
-    fn compile(self) -> Result<PathBuf> {
+    pub fn compile(self) -> Result<PathBuf> {
         self.compile_with(|cmd| cmd.output())
     }
 }
