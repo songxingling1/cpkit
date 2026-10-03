@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-struct ArtifactBuilder {
+pub struct ArtifactBuilder {
     source: PathBuf,
     artifact: PathBuf,
     options: Vec<OsString>,
