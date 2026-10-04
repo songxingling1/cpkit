@@ -1,31 +1,14 @@
 mod cli;
+mod commands;
 mod compile;
 mod print;
-use clap::{Parser, Subcommand};
-use std::path::PathBuf;
-
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
-struct Cpkit {
-    #[command(subcommand)]
-    commands: Commands,
-}
-
-/// 子命令
-#[derive(Subcommand)]
-enum Commands {
-    /// 编译源文件
-    Compile {
-        source: PathBuf,
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-    },
-}
+use clap::Parser;
+use cli::*;
 
 pub fn app() -> anyhow::Result<()> {
     let cpkit = Cpkit::parse();
     match cpkit.commands {
-        Commands::Compile { source, output } => cli::compile(&source, output.as_deref()),
+        Commands::Compile { source, output } => commands::compile(&source, output.as_deref()),
     }?;
     Ok(())
 }
