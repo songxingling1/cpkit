@@ -1,7 +1,7 @@
 mod cli;
 mod commands;
 mod compile;
-mod print;
+pub mod print;
 use clap::Parser;
 use cli::*;
 
