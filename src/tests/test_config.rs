@@ -18,8 +18,7 @@ fn success_discover() {
         .join("b")
         .join("c");
     std::fs::create_dir_all(&inner).expect("Failed to create temporary directory.");
-    let config =
-        tempfile::NamedTempFile::new_in(&dir).expect("Failed to crate temporary file.");
+    let config = tempfile::NamedTempFile::new_in(&dir).expect("Failed to crate temporary file.");
     let res = discover_configure(
         &inner,
         config
@@ -68,8 +67,7 @@ fn succeed_parse_dir() {
     };
     let str = toml::to_string_pretty(&config).expect("Failed to create a test config");
     let dir = tempfile::TempDir::new().expect("Failed to create temporary directory");
-    let mut file =
-        tempfile::NamedTempFile::new_in(&dir).expect("Failed to create temporary file");
+    let mut file = tempfile::NamedTempFile::new_in(&dir).expect("Failed to create temporary file");
     write!(file, "{}", str).expect("Failed to write config to temporary file");
     let res = TestConfig::from_dir(
         dir.path(),
