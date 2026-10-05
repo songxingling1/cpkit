@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -8,13 +8,16 @@ pub struct Cpkit {
     pub commands: Commands,
 }
 
+#[derive(Args)]
+pub struct CompileCommand {
+    pub source: PathBuf,
+    #[arg(short, long)]
+    pub output: Option<PathBuf>,
+}
+
 /// 子命令
 #[derive(Subcommand)]
 pub enum Commands {
     /// 编译源文件
-    Compile {
-        source: PathBuf,
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-    },
+    Compile(CompileCommand),
 }

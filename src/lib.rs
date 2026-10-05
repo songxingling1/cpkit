@@ -21,9 +21,7 @@ pub fn app() -> anyhow::Result<()> {
         Config::default()
     });
     match cpkit.commands {
-        Commands::Compile { source, output } => {
-            commands::compile(&config, &source, output.as_deref())
-        }
+        Commands::Compile(arg) => commands::compile(&config, arg),
     }?;
     Ok(())
 }
