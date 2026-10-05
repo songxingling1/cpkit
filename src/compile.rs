@@ -1,4 +1,4 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, ensure};
 use std::{
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
@@ -9,6 +9,18 @@ pub struct ArtifactBuilder {
     artifact: PathBuf,
     options: Vec<OsString>,
     compiler: PathBuf,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ArtifactError {
+    #[error("The source file should exist and be a file.")]
+    InvalidSource,
+    #[error("Artifact should't be a directory.")]
+    InvalidArtifact,
+    #[error("{0}")]
+    CompilationFailed(String),
+    #[error("The artifact still does not exist after compilation.")]
+    ArtifactNotExist,
 }
 
 impl ArtifactBuilder {
@@ -41,12 +53,8 @@ impl ArtifactBuilder {
     where
         R: FnOnce(&mut std::process::Command) -> std::io::Result<std::process::Output>,
     {
-        if !self.source.is_file() {
-            bail!("The source file should exist and be a file.");
-        }
-        if self.artifact.is_dir() {
-            bail!("Artifact should't be a directory.");
-        }
+        ensure!(self.source.is_file(), ArtifactError::InvalidSource);
+        ensure!(!self.artifact.is_dir(), ArtifactError::InvalidArtifact);
         let mut tmp = std::process::Command::new(self.compiler);
         let cmd = tmp
             .arg(self.source)
@@ -54,12 +62,11 @@ impl ArtifactBuilder {
             .arg(&self.artifact)
             .args(self.options);
         let res = runner(cmd).context("Failed to start the compiler.")?;
-        if !res.status.success() {
-            bail!("{}", String::from_utf8_lossy(&res.stderr));
-        }
-        if !self.artifact.is_file() {
-            bail!("The artifact still does not exist after compilation.");
-        }
+        ensure!(
+            res.status.success(),
+            ArtifactError::CompilationFailed(String::from_utf8_lossy(&res.stderr).to_string())
+        );
+        ensure!(self.artifact.is_file(), ArtifactError::ArtifactNotExist);
         Ok(self.artifact)
     }
     pub fn compile(self) -> Result<PathBuf> {
@@ -83,9 +90,6 @@ mod tests {
             stderr: Vec::new(),
             stdout: Vec::new(),
         })
-    }
-    fn assert_error_message(error: &anyhow::Error, expected: &str) {
-        assert!(error.chain().any(|cause| cause.to_string() == expected));
     }
     #[test]
     fn success() {
@@ -116,16 +120,26 @@ mod tests {
     }
     #[test]
     fn source_not_found() {
-        ArtifactBuilder::new(Path::new("/the/source/file/not/found"), Path::new("gcc"))
+        let err = ArtifactBuilder::new(Path::new("/the/source/file/not/found"), Path::new("gcc"))
             .compile_with(|_| ok_output())
             .expect_err("A not found file should fail");
+        assert!(matches!(
+            err.downcast_ref::<ArtifactError>()
+                .expect("Failed to extract error"),
+            ArtifactError::InvalidSource
+        ));
     }
     #[test]
     fn source_is_a_directory() {
         let source = tempfile::TempDir::new().expect("Failed to create a temporary directory.");
-        ArtifactBuilder::new(source.path(), Path::new("gcc"))
+        let err = ArtifactBuilder::new(source.path(), Path::new("gcc"))
             .compile_with(|_| ok_output())
             .expect_err("a directory source should fail");
+        assert!(matches!(
+            err.downcast_ref::<ArtifactError>()
+                .expect("Failed to extract error"),
+            ArtifactError::InvalidSource
+        ));
     }
     #[test]
     fn artifact_is_a_directory() {
@@ -133,10 +147,15 @@ mod tests {
             .expect("Failed to create a temporary source file.")
             .into_temp_path();
         let artifact = tempfile::TempDir::new().expect("Failed to create a temporary directory.");
-        ArtifactBuilder::new(&source, Path::new("gcc"))
+        let err = ArtifactBuilder::new(&source, Path::new("gcc"))
             .artifact(artifact.path())
             .compile_with(|_| ok_output())
             .expect_err("a directory artifact should fail");
+        assert!(matches!(
+            err.downcast_ref::<ArtifactError>()
+                .expect("Failed to extract error"),
+            ArtifactError::InvalidArtifact
+        ));
     }
     #[test]
     fn failed_to_start_compiler() {
@@ -146,7 +165,12 @@ mod tests {
         let err = ArtifactBuilder::new(&source, Path::new("gcc"))
             .compile_with(|_| Err(std::io::Error::other("test")))
             .expect_err("a invalid compiler should fail");
-        assert_error_message(&err, "Failed to start the compiler.");
+        assert!(matches!(
+            err.downcast_ref::<std::io::Error>()
+                .expect("Failed to extract error")
+                .kind(),
+            std::io::ErrorKind::Other
+        ));
     }
     #[test]
     fn compilation_failed() {
@@ -162,7 +186,11 @@ mod tests {
                 })
             })
             .expect_err("failed compilation should fail");
-        assert_error_message(&err, "compile error");
+        assert!(matches!(
+            err.downcast_ref::<ArtifactError>()
+                .expect("Failed to extract error"),
+            ArtifactError::CompilationFailed(_)
+        ));
     }
     #[test]
     fn artifact_not_found() {
@@ -175,6 +203,10 @@ mod tests {
             .artifact(&artifact)
             .compile_with(|_| ok_output())
             .expect_err("a not found artifact should fail");
-        assert_error_message(&err, "The artifact still does not exist after compilation.");
+        assert!(matches!(
+            err.downcast_ref::<ArtifactError>()
+                .expect("Failed to extract error"),
+            ArtifactError::ArtifactNotExist
+        ));
     }
 }
