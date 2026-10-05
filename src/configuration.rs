@@ -2,12 +2,16 @@ use crate::config::LoadConfig;
 use serde::Deserialize;
 use std::path::PathBuf;
 
+/// 编译相关配置
 #[derive(Deserialize)]
 pub struct CompileConfig {
+    /// 编译器
     pub compiler: PathBuf,
+    /// 编译选项
     pub flag: Vec<String>,
 }
 
+/// CLI 配置
 #[derive(Deserialize)]
 pub struct Config {
     pub compile: CompileConfig,

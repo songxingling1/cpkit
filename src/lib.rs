@@ -10,6 +10,10 @@ use cli::*;
 
 use crate::{config::LoadConfig, configuration::Config, print::print_warn};
 
+/// CLI 入口
+///
+/// # 错误
+/// 当 CLI 运行过程中产生了任何错误，返回 `Error`，除非主动 `panic!`。
 pub fn app() -> anyhow::Result<()> {
     let cpkit = Cpkit::parse();
     let config = Config::from_dir(
