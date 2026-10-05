@@ -1,0 +1,3 @@
+[compile]
+compiler = "/bin/g++"
+flag = ["-O2", "-std=c++14", "-Wall", "-fdiagnostics-color=always"]

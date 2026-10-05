@@ -2,17 +2,16 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
-use crate::{compile::ArtifactBuilder, print::print_progress};
+use crate::{compile::ArtifactBuilder, configuration::Config, print::print_progress};
 
-pub fn compile(source: &Path, output: Option<&Path>) -> Result<()> {
+pub fn compile(config: &Config, source: &Path, output: Option<&Path>) -> Result<()> {
     print_progress("Compiling", &source.to_string_lossy());
-    let mut tmp = ArtifactBuilder::new(source, Path::new("g++"));
+    let mut tmp = ArtifactBuilder::new(source, Path::new(&config.compile.compiler));
     if let Some(output) = output {
         tmp = tmp.artifact(output);
     }
     let res = tmp
-        .args(["-O2", "-std=c++14", "-Wall"])
-        .arg("-fdiagnostics-color=always")
+        .args(&config.compile.flag)
         .compile()
         .context("Compilation failed.")?;
     print_progress(
