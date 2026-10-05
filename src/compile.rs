@@ -32,6 +32,7 @@ impl ArtifactBuilder {
             compiler: compiler.to_owned(),
         }
     }
+    #[allow(dead_code)]
     pub fn arg<O: AsRef<OsStr>>(mut self, option: O) -> Self {
         self.options.push(option.as_ref().to_owned());
         self
