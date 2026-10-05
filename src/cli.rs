@@ -22,6 +22,6 @@ pub struct CompileCommand {
 /// 子命令
 #[derive(Subcommand)]
 pub enum Commands {
-    /// 编译源文件
+    /// Compile the source file.
     Compile(CompileCommand),
 }
