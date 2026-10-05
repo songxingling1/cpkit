@@ -14,7 +14,7 @@ fn success() {
         .stderr(predicate::str::contains(
             "Successfully compiled valid.c to valid",
         ))
-        .stderr(predicate::str::contains("warn").not())
+        .stderr(predicate::str::contains("warning").not())
         .stderr(predicate::str::contains("error").not());
     assert!(workspace.path().join("valid").is_file());
     run_artifact("valid", workspace.path())
@@ -49,7 +49,7 @@ fn success_without_set_output() {
         .stderr(predicate::str::contains(
             "Successfully compiled valid.c to a.out",
         ))
-        .stderr(predicate::str::contains("warn").not())
+        .stderr(predicate::str::contains("warning").not())
         .stderr(predicate::str::contains("error").not());
     assert!(workspace.path().join("a.out").is_file());
     run_artifact("a.out", workspace.path())
