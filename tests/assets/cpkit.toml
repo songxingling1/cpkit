@@ -1,0 +1,3 @@
+[compile]
+compiler = "/bin/gcc"
+flag = ["-O2", "-Wall", "-fdiagnostics-color=always"]
