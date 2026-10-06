@@ -6,15 +6,15 @@ fn exit_status(code: i32) -> ExitStatus {
     // 正常退出码通常左移 8 位。
     std::process::ExitStatus::from_raw(code << 8)
 }
-fn ok_output() -> std::io::Result<std::process::Output> {
+fn ok_output() -> tokio::io::Result<std::process::Output> {
     Ok(std::process::Output {
         status: exit_status(0),
         stderr: Vec::new(),
         stdout: Vec::new(),
     })
 }
-#[test]
-fn success() {
+#[tokio::test]
+async fn success() {
     let dir = tempfile::TempDir::new().expect("Failed to create a temporary directory.");
     let source = tempfile::NamedTempFile::new_in(&dir)
         .expect("Failed to create a temporary source file.")
@@ -24,9 +24,9 @@ fn success() {
         .arg("-O2")
         .args(["-Wall", "-std=c++14"])
         .artifact(&artifact)
-        .compile_with(|cmd| {
-            assert_eq!(cmd.get_program(), "gcc");
-            let args: Vec<OsString> = cmd.get_args().map(|s| s.to_owned()).collect();
+        .compile_with(async |cmd| {
+            assert_eq!(cmd.as_std().get_program(), "gcc");
+            let args: Vec<OsString> = cmd.as_std().get_args().map(|s| s.to_owned()).collect();
             assert_eq!(args[0], source.as_os_str());
             assert_eq!(args[1].as_os_str(), "-o");
             assert_eq!(args[2], artifact.as_os_str());
@@ -36,14 +36,16 @@ fn success() {
             std::fs::write(&artifact, "artifact").expect("Failed to write artifact");
             ok_output()
         })
+        .await
         .expect("A valid compilation should succeed.");
     assert_eq!(built, artifact);
     assert!(artifact.is_file());
 }
-#[test]
-fn source_not_found() {
+#[tokio::test]
+async fn source_not_found() {
     let err = ArtifactBuilder::new(Path::new("/the/source/file/not/found"), Path::new("gcc"))
-        .compile_with(|_| ok_output())
+        .compile_with(async |_| ok_output())
+        .await
         .expect_err("A not found file should fail");
     assert!(matches!(
         err.downcast_ref::<ArtifactError>()
@@ -51,11 +53,12 @@ fn source_not_found() {
         ArtifactError::InvalidSource
     ));
 }
-#[test]
-fn source_is_a_directory() {
+#[tokio::test]
+async fn source_is_a_directory() {
     let source = tempfile::TempDir::new().expect("Failed to create a temporary directory.");
     let err = ArtifactBuilder::new(source.path(), Path::new("gcc"))
-        .compile_with(|_| ok_output())
+        .compile_with(async |_| ok_output())
+        .await
         .expect_err("a directory source should fail");
     assert!(matches!(
         err.downcast_ref::<ArtifactError>()
@@ -63,15 +66,16 @@ fn source_is_a_directory() {
         ArtifactError::InvalidSource
     ));
 }
-#[test]
-fn artifact_is_a_directory() {
+#[tokio::test]
+async fn artifact_is_a_directory() {
     let source = tempfile::NamedTempFile::new()
         .expect("Failed to create a temporary source file.")
         .into_temp_path();
     let artifact = tempfile::TempDir::new().expect("Failed to create a temporary directory.");
     let err = ArtifactBuilder::new(&source, Path::new("gcc"))
         .artifact(artifact.path())
-        .compile_with(|_| ok_output())
+        .compile_with(async |_| ok_output())
+        .await
         .expect_err("a directory artifact should fail");
     assert!(matches!(
         err.downcast_ref::<ArtifactError>()
@@ -79,13 +83,14 @@ fn artifact_is_a_directory() {
         ArtifactError::InvalidArtifact
     ));
 }
-#[test]
-fn failed_to_start_compiler() {
+#[tokio::test]
+async fn failed_to_start_compiler() {
     let source = tempfile::NamedTempFile::new()
         .expect("Failed to create a temporary source file.")
         .into_temp_path();
     let err = ArtifactBuilder::new(&source, Path::new("gcc"))
-        .compile_with(|_| Err(std::io::Error::other("test")))
+        .compile_with(async |_| Err(std::io::Error::other("test")))
+        .await
         .expect_err("a invalid compiler should fail");
     assert!(matches!(
         err.downcast_ref::<std::io::Error>()
@@ -94,19 +99,20 @@ fn failed_to_start_compiler() {
         std::io::ErrorKind::Other
     ));
 }
-#[test]
-fn compilation_failed() {
+#[tokio::test]
+async fn compilation_failed() {
     let source = tempfile::NamedTempFile::new()
         .expect("Failed to create a temporary source file.")
         .into_temp_path();
     let err = ArtifactBuilder::new(&source, Path::new("gcc"))
-        .compile_with(|_| {
+        .compile_with(async |_| {
             Ok(std::process::Output {
                 status: exit_status(1),
                 stderr: "compile error".as_bytes().to_vec(),
                 stdout: Vec::new(),
             })
         })
+        .await
         .expect_err("failed compilation should fail");
     assert!(matches!(
         err.downcast_ref::<ArtifactError>()
@@ -114,8 +120,8 @@ fn compilation_failed() {
         ArtifactError::CompilationFailed(_)
     ));
 }
-#[test]
-fn artifact_not_found() {
+#[tokio::test]
+async fn artifact_not_found() {
     let dir = tempfile::TempDir::new().expect("Failed to create a temporary directory.");
     let source = tempfile::NamedTempFile::new_in(&dir)
         .expect("Failed to create a temporary source file.")
@@ -123,7 +129,8 @@ fn artifact_not_found() {
     let artifact = dir.path().join("artifact");
     let err = ArtifactBuilder::new(&source, Path::new("gcc"))
         .artifact(&artifact)
-        .compile_with(|_| ok_output())
+        .compile_with(async |_| ok_output())
+        .await
         .expect_err("a not found artifact should fail");
     assert!(matches!(
         err.downcast_ref::<ArtifactError>()

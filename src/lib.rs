@@ -8,24 +8,33 @@ use anyhow::Context;
 use clap::Parser;
 use cli::*;
 
-use crate::{config::LoadConfig, configuration::Config, print::print_warn};
+use crate::{configuration::Config, print::print_warn};
 
 /// CLI 入口
 ///
 /// # 错误
 /// 当 CLI 运行过程中产生了任何错误，返回 `Error`，除非主动 `panic!`。
-pub fn app() -> anyhow::Result<()> {
+pub async fn app() -> anyhow::Result<()> {
     let cpkit = Cpkit::parse();
-    let config = Config::from_dir(
+    let workspace = config::discover_workspace(
         &std::env::current_dir().context("Failed to get current directory.")?,
         "cpkit.toml",
-    )
-    .unwrap_or_else(|_| {
-        print_warn("Failed to load configuration. Use default configuration.");
-        Config::default()
-    });
+    );
+    let config = match workspace {
+        Some(w) => config::load_config(&w.join("cpkit.toml"))
+            .await
+            .unwrap_or_else(|_| {
+                print_warn("Failed to load configuration. Use default configuration.");
+                Config::default()
+            }),
+        None => {
+            print_warn("Failed to find workspace folder. Use default configuration.");
+            Config::default()
+        }
+    };
     match cpkit.commands {
         Commands::Compile(arg) => commands::compile(&config, arg),
-    }?;
+    }
+    .await?;
     Ok(())
 }

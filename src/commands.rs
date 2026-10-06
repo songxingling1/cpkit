@@ -7,7 +7,10 @@ use crate::{
 };
 
 /// 承接编译请求。
-pub fn compile(config: &Config, CompileCommand { source, output }: CompileCommand) -> Result<()> {
+pub async fn compile(
+    config: &Config,
+    CompileCommand { source, output }: CompileCommand,
+) -> Result<()> {
     print_progress("Compiling", &source.to_string_lossy());
     let mut tmp = ArtifactBuilder::new(&source, Path::new(&config.compile.compiler));
     if let Some(output) = output {
@@ -16,6 +19,7 @@ pub fn compile(config: &Config, CompileCommand { source, output }: CompileComman
     let res = tmp
         .args(&config.compile.flag)
         .compile()
+        .await
         .context("Compilation failed.")?;
     print_progress(
         "Finished",

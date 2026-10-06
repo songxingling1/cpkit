@@ -66,19 +66,19 @@ impl ArtifactBuilder {
     ///
     /// # 参数
     /// - `runner`: 自定义编译器运行器，方便 Mock。
-    fn compile_with<R>(self, runner: R) -> Result<PathBuf>
+    async fn compile_with<R>(self, runner: R) -> Result<PathBuf>
     where
-        R: FnOnce(&mut std::process::Command) -> std::io::Result<std::process::Output>,
+        R: AsyncFnOnce(&mut tokio::process::Command) -> tokio::io::Result<std::process::Output>,
     {
         ensure!(self.source.is_file(), ArtifactError::InvalidSource);
         ensure!(!self.artifact.is_dir(), ArtifactError::InvalidArtifact);
-        let mut tmp = std::process::Command::new(self.compiler);
+        let mut tmp = tokio::process::Command::new(self.compiler);
         let cmd = tmp
             .arg(self.source)
             .arg("-o")
             .arg(&self.artifact)
             .args(self.options);
-        let res = runner(cmd).context("Failed to start the compiler.")?;
+        let res = runner(cmd).await.context("Failed to start the compiler.")?;
         ensure!(
             res.status.success(),
             ArtifactError::CompilationFailed(String::from_utf8_lossy(&res.stderr).to_string())
@@ -87,8 +87,8 @@ impl ArtifactBuilder {
         Ok(self.artifact)
     }
     /// 编译得到产物。
-    pub fn compile(self) -> Result<PathBuf> {
-        self.compile_with(|cmd| cmd.output())
+    pub async fn compile(self) -> Result<PathBuf> {
+        self.compile_with(async |cmd| cmd.output().await).await
     }
 }
 

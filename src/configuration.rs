@@ -1,4 +1,3 @@
-use crate::config::LoadConfig;
 use serde::Deserialize;
 use std::path::PathBuf;
 
@@ -17,7 +16,6 @@ pub struct Config {
     pub compile: CompileConfig,
 }
 
-impl LoadConfig for Config {}
 impl Default for CompileConfig {
     fn default() -> Self {
         CompileConfig {
