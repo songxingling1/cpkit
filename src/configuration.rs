@@ -11,7 +11,7 @@ pub struct CompileConfig {
 }
 
 /// CLI 配置
-#[derive(Deserialize)]
+#[derive(Deserialize, Default)]
 pub struct Config {
     pub compile: CompileConfig,
 }
@@ -21,13 +21,6 @@ impl Default for CompileConfig {
         CompileConfig {
             compiler: PathBuf::from("g++"),
             flag: vec!["-fdiagnostics-color=always".to_owned()],
-        }
-    }
-}
-impl Default for Config {
-    fn default() -> Self {
-        Config {
-            compile: CompileConfig::default(),
         }
     }
 }
