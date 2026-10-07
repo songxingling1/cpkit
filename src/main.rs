@@ -8,10 +8,9 @@ use anyhow::Context;
 use clap::Parser;
 use cli::*;
 
-use crate::{configuration::Config, print::print_error, print::print_warn};
+use crate::configuration::Config;
 
-/// CLI 入口
-///
+/// CLI 入口///
 /// # 错误
 /// 当 CLI 运行过程中产生了任何错误，返回 `Error`，除非主动 `panic!`。
 pub async fn app() -> anyhow::Result<()> {
@@ -24,11 +23,11 @@ pub async fn app() -> anyhow::Result<()> {
         Some(w) => config::load_config(&w.join("cpkit.toml"))
             .await
             .unwrap_or_else(|_| {
-                print_warn("Failed to load configuration. Use default configuration.");
+                print_warn!("Failed to load configuration. Use default configuration.");
                 Config::default()
             }),
         None => {
-            print_warn("Failed to find workspace folder. Use default configuration.");
+            print_warn!("Failed to find workspace folder. Use default configuration.");
             Config::default()
         }
     };
@@ -42,7 +41,7 @@ pub async fn app() -> anyhow::Result<()> {
 #[tokio::main]
 async fn main() {
     if let Err(e) = app().await {
-        print_error(&format!("{e:?}"));
+        print_error!("{e:?}");
         std::process::exit(1);
     }
 }

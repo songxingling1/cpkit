@@ -4,6 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use crate::print::vecu8_to_string_lossy;
+
 /// 产物构建器，用于从源码路径生成一个产物路径。
 pub struct ArtifactBuilder {
     source: PathBuf,
@@ -81,7 +83,7 @@ impl ArtifactBuilder {
         let res = runner(cmd).await.context("Failed to start the compiler.")?;
         ensure!(
             res.status.success(),
-            ArtifactError::CompilationFailed(String::from_utf8_lossy(&res.stderr).to_string())
+            ArtifactError::CompilationFailed(vecu8_to_string_lossy(res.stderr))
         );
         ensure!(self.artifact.is_file(), ArtifactError::ArtifactNotExist);
         Ok(self.artifact)
