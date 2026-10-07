@@ -61,7 +61,7 @@ impl ArtifactBuilder {
     }
     /// 指定生成物位置。
     pub fn artifact(mut self, artifact: &Path) -> Self {
-        self.artifact = artifact.to_owned();
+        artifact.clone_into(&mut self.artifact);
         self
     }
     /// 编译

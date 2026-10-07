@@ -26,14 +26,11 @@ pub enum ConfigError {
 pub fn discover_workspace(dir: &Path, name: &str) -> Option<PathBuf> {
     let mut cur = dir.to_owned();
     loop {
-        let config = cur.join(name);
-        if config.is_file() {
-            break Some(cur);
+        if cur.join(name).is_file() {
+            return Some(cur);
         }
-        if let Some(p) = cur.parent() {
-            cur = p.to_owned();
-        } else {
-            break None;
+        if !cur.pop() {
+            return None;
         }
     }
 }

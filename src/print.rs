@@ -58,6 +58,7 @@ macro_rules! print_warn {
     };
 }
 
+#[must_use]
 pub fn vecu8_to_string_lossy(vec: Vec<u8>) -> String {
     match String::from_utf8(vec) {
         Ok(s) => s,
