@@ -65,3 +65,7 @@ pub fn vecu8_to_string_lossy(vec: Vec<u8>) -> String {
         Err(e) => String::from_utf8_lossy(&e.into_bytes()).into_owned(),
     }
 }
+
+#[cfg(test)]
+#[path = "tests/test_vec_to_string.rs"]
+mod tests;
