@@ -97,7 +97,7 @@ trait SignalSource {
 
 impl SignalSource for Signal {
     async fn recv(&mut self) -> () {
-        self.recv().await.expect("Signal never return None")
+        self.recv().await.expect("Signal never return None");
     }
 }
 
@@ -137,7 +137,7 @@ impl<O: Os, S: SignalSource> InnerRusageChild<O, S> {
         let res = self.os.wait4(self.pid, libc::WNOHANG)?;
         if let Some((status, rusage)) = res {
             let res = RunResult {
-                rusage: rusage,
+                rusage,
                 exit_status: std::process::ExitStatus::from_raw(status),
             };
             self.result = Some(res);
@@ -163,13 +163,13 @@ impl<O: Os, S: SignalSource> InnerRusageChild<O, S> {
                         unreachable!("wait4 without WNOHANG always returns Some on success")
                     };
                     let res = RunResult {
-                        rusage: rusage,
+                        rusage,
                         exit_status: std::process::ExitStatus::from_raw(status),
                     };
                     self.result = Some(res);
                     break Ok(res)
                 }
-                _ = self.signal.recv() => {
+                () = self.signal.recv() => {
                     loop {
                         match self.try_wait() {
                             Ok(Some(r)) => break 'main Ok(r),
