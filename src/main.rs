@@ -4,7 +4,7 @@ mod compile;
 mod config;
 mod configuration;
 pub mod print;
-mod runner;
+mod rusage;
 use anyhow::Context;
 use clap::Parser;
 use cli::{Commands, Cpkit};
