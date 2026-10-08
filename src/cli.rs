@@ -23,9 +23,6 @@ pub struct CompileCommand {
 pub struct RunCommand {
     /// Source
     pub source: PathBuf,
-    #[arg(short, long,value_parser = humantime::parse_duration,
-        default_value = "1s")]
-    pub limit: std::time::Duration,
 }
 
 /// 子命令
