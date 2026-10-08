@@ -139,11 +139,11 @@ impl RusageChild {
 }
 
 pub trait RusageExt {
-    fn spawn_with_rusage(self) -> Result<RusageChild>;
+    fn spawn_with_rusage(&mut self) -> Result<RusageChild>;
 }
 
 impl RusageExt for std::process::Command {
-    fn spawn_with_rusage(mut self) -> Result<RusageChild> {
+    fn spawn_with_rusage(&mut self) -> Result<RusageChild> {
         RusageChild::new(self.spawn()?)
     }
 }
