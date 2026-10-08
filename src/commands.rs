@@ -32,10 +32,12 @@ pub async fn compile(
     Ok(())
 }
 
+/// 获取文件修改时间
 async fn get_modify_time(path: &Path) -> std::io::Result<SystemTime> {
     tokio::fs::metadata(path).await?.modified()
 }
 
+/// 从数字信号获取信号名称
 fn get_signal_name(signal: Option<i32>) -> &'static str {
     if let Some(sig) = signal {
         match sig {
@@ -75,11 +77,13 @@ fn get_signal_name(signal: Option<i32>) -> &'static str {
     }
 }
 
+/// 峰值内存的除数，在 macOS 上 ru_maxrss 单位是 byte，其他平台上是 kb
 #[cfg(not(target_os = "macos"))]
 const MAXRSS_DIVISOR: f64 = 1024.0;
 #[cfg(target_os = "macos")]
 const MAXRSS_DIVISOR: f64 = 1024.0 * 1024.0;
 
+/// 承接运行请求
 pub async fn run(config: &Config, RunCommand { source, limit }: RunCommand) -> Result<()> {
     let output = source
         .file_prefix()
