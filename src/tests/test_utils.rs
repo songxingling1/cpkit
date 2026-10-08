@@ -1,4 +1,4 @@
-use crate::print::vecu8_to_string_lossy;
+use super::*;
 
 #[test]
 fn valid_string() {

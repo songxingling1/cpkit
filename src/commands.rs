@@ -3,10 +3,10 @@ use crate::{
     compile::ArtifactBuilder,
     configuration::Config,
     print_progress,
-    runner::run_with_time_limit,
+    utils::{get_modify_time, get_signal_name, run_with_time_limit},
 };
 use anyhow::{Context, Result, anyhow};
-use std::{os::unix::process::ExitStatusExt, path::Path, time::SystemTime};
+use std::{os::unix::process::ExitStatusExt, path::Path};
 
 /// 承接编译请求。
 pub async fn compile(
@@ -30,51 +30,6 @@ pub async fn compile(
         res.display()
     );
     Ok(())
-}
-
-/// 获取文件修改时间
-async fn get_modify_time(path: &Path) -> std::io::Result<SystemTime> {
-    tokio::fs::metadata(path).await?.modified()
-}
-
-/// 从数字信号获取信号名称
-fn get_signal_name(signal: Option<i32>) -> &'static str {
-    if let Some(sig) = signal {
-        match sig {
-            libc::SIGHUP => "Hangup",
-            libc::SIGINT => "Interrupt",
-            libc::SIGQUIT => "Quit",
-            libc::SIGILL => "Illegal instruction",
-            libc::SIGTRAP => "Trace/breakpoint trap",
-            libc::SIGABRT => "Aborted",
-            libc::SIGFPE => "Floating point exception",
-            libc::SIGKILL => "Killed",
-            libc::SIGBUS => "Bus error",
-            libc::SIGSYS => "Bad system call",
-            libc::SIGSEGV => "Segmentation fault",
-            libc::SIGPIPE => "Broken pipe",
-            libc::SIGALRM => "Alarm clock",
-            libc::SIGTERM => "Terminated",
-            libc::SIGURG => "Urgent I/O condition",
-            libc::SIGSTOP => "Stopped (signal)",
-            libc::SIGTSTP => "Stopped",
-            libc::SIGCONT => "Continued",
-            libc::SIGCHLD => "Child exited",
-            libc::SIGTTIN => "Stopped (tty input)",
-            libc::SIGTTOU => "Stopped (tty output)",
-            libc::SIGPOLL => "I/O possible",
-            libc::SIGXCPU => "CPU time limit exceeded",
-            libc::SIGXFSZ => "File size limit exceeded",
-            libc::SIGVTALRM => "Virtual timer expired",
-            libc::SIGPROF => "Profiling timer expired",
-            libc::SIGUSR1 => "User defined signal 1",
-            libc::SIGUSR2 => "User defined signal 2",
-            libc::SIGWINCH => "Window changed",
-            _ => "Unknown signal",
-        }
-    } else {
-        "None"
-    }
 }
 
 /// 峰值内存的除数，在 macOS 上 ru_maxrss 单位是 byte，其他平台上是 kb

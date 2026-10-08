@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::print::vecu8_to_string_lossy;
+use crate::utils::vecu8_to_string_lossy;
 
 /// 产物构建器，用于从源码路径生成一个产物路径。
 pub struct ArtifactBuilder {
