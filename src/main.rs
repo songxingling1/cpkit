@@ -3,7 +3,8 @@ mod commands;
 mod compile;
 mod config;
 mod configuration;
-pub mod print;
+mod print;
+mod runner;
 mod rusage;
 use anyhow::Context;
 use clap::Parser;
@@ -32,9 +33,9 @@ pub async fn app() -> anyhow::Result<()> {
         Config::default()
     };
     match cpkit.commands {
-        Commands::Compile(arg) => commands::compile(&config, arg),
-    }
-    .await?;
+        Commands::Compile(arg) => commands::compile(&config, arg).await,
+        Commands::Run(arg) => commands::run(&config, arg).await,
+    }?;
     Ok(())
 }
 

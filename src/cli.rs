@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
 
-/// CLI
+/// Cpkit
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Cpkit {
@@ -9,14 +9,23 @@ pub struct Cpkit {
     pub commands: Commands,
 }
 
-/// 编译命令
+/// Compile Command
 #[derive(Args)]
 pub struct CompileCommand {
-    /// 源码
+    /// Source
     pub source: PathBuf,
-    /// 产物位置
+    /// Output Path
     #[arg(short, long)]
     pub output: Option<PathBuf>,
+}
+
+#[derive(Args)]
+pub struct RunCommand {
+    /// Source
+    pub source: PathBuf,
+    #[arg(short, long,value_parser = humantime::parse_duration,
+        default_value = "1s")]
+    pub limit: std::time::Duration,
 }
 
 /// 子命令
@@ -24,4 +33,6 @@ pub struct CompileCommand {
 pub enum Commands {
     /// Compile the source file.
     Compile(CompileCommand),
+    /// Run the source file.
+    Run(RunCommand),
 }

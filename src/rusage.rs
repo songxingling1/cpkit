@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use libc::{c_int, pid_t, rusage};
 use std::io::Result;
 use std::mem::MaybeUninit;
@@ -9,8 +8,8 @@ use tokio::signal::unix::{Signal, SignalKind, signal};
 /// 退出信息，包含退出状态和 Rusage
 #[derive(Debug, Clone, Copy)]
 pub struct ExitInformation {
-    exit_status: ExitStatus,
-    rusage: rusage,
+    pub exit_status: ExitStatus,
+    pub rusage: rusage,
 }
 
 #[cfg_attr(test, mockall::automock)]
@@ -127,6 +126,7 @@ impl RusageChild {
             child,
         }))
     }
+    #[allow(dead_code)]
     pub fn try_wait(&mut self) -> Result<Option<ExitInformation>> {
         self.0.try_wait()
     }
