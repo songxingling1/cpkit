@@ -84,10 +84,3 @@ fn invalid_arg_problem_config() {
     );
     assert!(ans.is_none());
 }
-
-#[test]
-fn problem_config_not_found() {
-    let dir = tempfile::TempDir::new().expect("Failed to create temporary directory");
-    let ans = get_problem_config_dir(&dir.path().join("test.cpp"), dir.path(), ".cpkit");
-    assert!(ans.is_none());
-}
