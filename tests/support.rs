@@ -1,4 +1,5 @@
-use assert_cmd::{Command, assert::Assert};
+#![allow(dead_code)]
+use assert_cmd::{Command, assert::Assert, cargo::cargo_bin};
 use std::{ffi::OsStr, path::Path};
 
 pub fn init_workspace() -> tempfile::TempDir {
@@ -31,6 +32,20 @@ where
         .args(args)
         .current_dir(workspace)
         .assert()
+}
+
+pub fn run_cpkit_with_child<I, S>(args: I, workspace: &Path) -> std::process::Child
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    std::process::Command::new(cargo_bin("cpkit"))
+        .args(args)
+        .current_dir(workspace)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .expect("Failed to run cpkit")
 }
 
 pub fn run_artifact(name: &str, workspace: &Path) -> Assert {
