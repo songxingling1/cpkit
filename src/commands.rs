@@ -26,20 +26,18 @@ pub async fn compile(
         Ok(p) => p,
         Err(e) => return Err(anyhow!(e).context("The source file should exist and be a file.")),
     };
-    let problem: ProblemConfig = load_config(
-        &get_problem_config_dir(&source, workspace, ".cpkit")
-            .context("Failed to read problem configuration.")?
-            .join("config.toml"),
-    )
-    .await?;
+    let problem_config_dir = get_problem_config_dir(&source, workspace, ".cpkit")
+        .context("Failed to read problem configuration.")?;
+    let problem: ProblemConfig = load_config(&problem_config_dir.join("config.toml")).await?;
     print_progress!("Compiling", "{}", source.display());
     let mut tmp = match problem.problem_type {
         Tranditional { name: _ } => {
             ArtifactBuilder::new([&source], Path::new(&config.compile.compiler))
         }
-        Interactive { header: _, grader } => {
-            ArtifactBuilder::new([&source, &grader], Path::new(&config.compile.compiler))
-        }
+        Interactive { header: _, grader } => ArtifactBuilder::new(
+            [&source, &problem_config_dir.join(grader)],
+            Path::new(&config.compile.compiler),
+        ),
     };
     if let Some(output) = output {
         tmp = tmp.artifact(&output);

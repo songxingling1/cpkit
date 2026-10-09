@@ -30,6 +30,14 @@ pub fn prepare_source_without_cfg(source: &str, dst: &Path) {
     std::fs::copy(&src, dst.join(format!("{}.c", source))).expect("Failed to prepare source");
 }
 
+pub fn prepare_header(source: &str, dst: &Path) {
+    let src = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("assets")
+        .join(format!("{}.h", source));
+    std::fs::copy(&src, dst.join(format!("{}.h", source))).expect("Failed to prepare header");
+}
+
 pub fn prepare_configuration(dst: &Path) {
     let src = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests")

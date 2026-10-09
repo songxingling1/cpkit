@@ -1,0 +1,11 @@
+memory-limit = 512
+time-limit = 1024
+testcase = []
+
+[problem-type]
+type = "interactive"
+header = "../../interactive.h"
+grader = "../../grader.c"
+
+[checker]
+type = "builtin"

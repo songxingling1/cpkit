@@ -2,7 +2,8 @@ mod support;
 use std::{fs, os::unix::fs::PermissionsExt};
 
 use crate::support::{
-    init_workspace, prepare_configuration, prepare_source, run_artifact, run_cpkit,
+    init_workspace, prepare_configuration, prepare_header, prepare_source,
+    prepare_source_without_cfg, run_artifact, run_cpkit,
 };
 use predicates::prelude::*;
 
@@ -86,4 +87,24 @@ fn cannot_get_configuration() {
     run_artifact("valid", workspace.path())
         .success()
         .stdout(predicate::eq("Hello, World!"));
+}
+#[test]
+fn interactive() {
+    let workspace = init_workspace();
+    prepare_source("interactive", workspace.path());
+    prepare_source_without_cfg("grader", workspace.path());
+    prepare_header("interactive", workspace.path());
+    prepare_configuration(workspace.path());
+    run_cpkit(
+        ["compile", "interactive.c", "-o", "interactive"],
+        workspace.path(),
+    )
+    .success()
+    .stderr(predicate::str::contains("Successfully compiled"))
+    .stderr(predicate::str::contains("warning").not())
+    .stderr(predicate::str::contains("error").not());
+    assert!(workspace.path().join("interactive").is_file());
+    run_artifact("interactive", workspace.path())
+        .success()
+        .stdout(predicate::eq("Interactive!"));
 }
