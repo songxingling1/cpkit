@@ -19,10 +19,23 @@ pub struct CompileCommand {
     pub output: Option<PathBuf>,
 }
 
+/// Run Command
 #[derive(Args)]
 pub struct RunCommand {
     /// Source
     pub source: PathBuf,
+}
+
+#[derive(Args)]
+pub struct InitCommand {
+    /// Source
+    pub source: PathBuf,
+    /// Interactive
+    #[arg(long, short = 'i')]
+    pub with_interactive: bool,
+    /// Special judge
+    #[arg(long, short = 'c')]
+    pub with_checker: bool,
 }
 
 /// 子命令
@@ -32,4 +45,6 @@ pub enum Commands {
     Compile(CompileCommand),
     /// Run the source file.
     Run(RunCommand),
+    /// Init config for problem
+    Init(InitCommand),
 }

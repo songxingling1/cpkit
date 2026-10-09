@@ -1,15 +1,17 @@
 use crate::{
-    cli::{CompileCommand, RunCommand},
+    cli::{CompileCommand, InitCommand, RunCommand},
     compile::ArtifactBuilder,
-    configuration::Config,
+    config::get_problem_config_dir,
+    configuration::{Config, ProblemConfig},
     print_progress,
     rusage::RusageExt,
     utils::get_signal_name,
 };
 use anyhow::{Context, Result, anyhow, ensure};
 use sha2::Digest;
-use std::time::Duration;
 use std::{os::unix::process::ExitStatusExt, path::Path};
+use std::{path::PathBuf, time::Duration};
+use tokio::io::AsyncWriteExt;
 
 /// 承接编译请求。
 pub async fn compile(
@@ -96,6 +98,57 @@ pub async fn run(config: &Config, RunCommand { source }: RunCommand) -> Result<(
         humantime::format_duration(time).to_string(),
         maxrss,
         get_signal_name(res.exit_status.signal())
+    );
+    Ok(())
+}
+
+pub async fn init(
+    workspace: Option<&Path>,
+    InitCommand {
+        source,
+        with_checker,
+        with_interactive,
+    }: InitCommand,
+) -> Result<()> {
+    let workspace = workspace.ok_or(
+        anyhow!("There isn't a workspace folder.")
+            .context("Failed to create problem configuration"),
+    )?;
+    let source = match tokio::fs::canonicalize(source).await {
+        Ok(p) => p,
+        Err(e) => return Err(anyhow!(e).context("The source file is invalid")),
+    };
+    let dir = get_problem_config_dir(&source, workspace, ".cpkit")
+        .context("Failed to compute the problem configuration path.")?;
+    tokio::fs::create_dir_all(&dir)
+        .await
+        .context("Failed to create problem configuration")?;
+    let mut file = tokio::fs::File::create_new(dir.join("config.toml"))
+        .await
+        .context("Failed to create problem configuration")?;
+    let mut config = ProblemConfig::default();
+    if with_checker {
+        config.checker = crate::configuration::Checker::Special {
+            path: PathBuf::new(),
+        }
+    }
+    if with_interactive {
+        config.problem_type = crate::configuration::ProblemType::Interactive {
+            header: PathBuf::new(),
+            grader: PathBuf::new(),
+        }
+    }
+    file.write_all(
+        toml::to_string_pretty(&config)
+            .context("Failed to generate configuration template.")?
+            .as_bytes(),
+    )
+    .await
+    .context("Failed to write configuration.")?;
+    print_progress!(
+        "Finished",
+        "Created configuration for {}.",
+        source.display()
     );
     Ok(())
 }

@@ -21,7 +21,7 @@ pub async fn app() -> anyhow::Result<()> {
         &std::env::current_dir().context("Failed to get current directory.")?,
         "cpkit.toml",
     );
-    let config = if let Some(w) = workspace {
+    let config = if let Some(w) = workspace.clone() {
         config::load_config(&w.join("cpkit.toml"))
             .await
             .unwrap_or_else(|_| {
@@ -35,6 +35,7 @@ pub async fn app() -> anyhow::Result<()> {
     match cpkit.commands {
         Commands::Compile(arg) => commands::compile(&config, arg).await,
         Commands::Run(arg) => commands::run(&config, arg).await,
+        Commands::Init(arg) => commands::init(workspace.as_deref(), arg).await,
     }?;
     Ok(())
 }

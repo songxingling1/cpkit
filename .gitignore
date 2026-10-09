@@ -1,1 +1,4 @@
 /target
+test.cpp
+.cpkit
+cpkit.toml
