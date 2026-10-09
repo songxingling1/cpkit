@@ -4,7 +4,7 @@ testcase = []
 
 [problem-type]
 type = "tranditional"
-name = "valid"
+name = "longtime"
 
 [checker]
 type = "builtin"
