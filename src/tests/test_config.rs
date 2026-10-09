@@ -61,3 +61,33 @@ async fn failed_parse_path() {
     };
     assert_eq!(e.kind(), std::io::ErrorKind::NotFound);
 }
+
+#[test]
+fn success_find_problem_config() {
+    let dir = tempfile::TempDir::new().expect("Failed to create temporary directory");
+    let res = dir.path().join(".cpkit").join("test.cpp");
+    std::fs::create_dir_all(&res).expect("Failed to create temporary directory");
+    let ans = get_problem_config_dir(&dir.path().join("test.cpp"), dir.path(), ".cpkit")
+        .expect("A valid path should succeed");
+    assert_eq!(ans, res);
+}
+
+#[test]
+fn invalid_arg_problem_config() {
+    let dir = tempfile::TempDir::new().expect("Failed to create temporary directory");
+    let res = dir.path().join(".cpkit").join("test.cpp");
+    std::fs::create_dir_all(&res).expect("Failed to create temporary directory");
+    let ans = get_problem_config_dir(
+        &dir.path().join("test.cpp"),
+        &dir.path().join("invalid"),
+        ".cpkit",
+    );
+    assert!(ans.is_none());
+}
+
+#[test]
+fn problem_config_not_found() {
+    let dir = tempfile::TempDir::new().expect("Failed to create temporary directory");
+    let ans = get_problem_config_dir(&dir.path().join("test.cpp"), dir.path(), ".cpkit");
+    assert!(ans.is_none());
+}

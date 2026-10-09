@@ -42,6 +42,20 @@ pub async fn load_config<T: DeserializeOwned>(path: &Path) -> Result<T, ConfigEr
     toml::from_str(&content).map_err(ConfigError::Parse)
 }
 
+/// 根据源代码路径、工作区路径求出题目配置文件夹的路径，要求工作区、源码都是绝对路径。
+/// 如果可以根据源代码路径找到配置文件夹，返回 `Some(path)`，
+/// 否则返回 `None`。
+///
+/// # 参数
+/// - `path`：源文件路径
+/// - `workspace`：工作区路径
+/// - `folder`：工作区下存储配置文件的文件夹
+pub fn get_problem_config_dir(path: &Path, workspace: &Path, folder: &str) -> Option<PathBuf> {
+    let relative = path.strip_prefix(workspace).ok()?;
+    let res = workspace.join(folder).join(relative);
+    if res.is_dir() { Some(res) } else { None }
+}
+
 #[cfg(test)]
 #[path = "tests/test_config.rs"]
 mod tests;
