@@ -1,8 +1,11 @@
 use crate::{
     cli::{CompileCommand, InitCommand, RunCommand},
     compile::ArtifactBuilder,
-    config::get_problem_config_dir,
-    configuration::{Config, ProblemConfig},
+    config::{get_problem_config_dir, load_config},
+    configuration::{
+        Config, ProblemConfig,
+        ProblemType::{Interactive, Tranditional},
+    },
     print_progress,
     rusage::RusageExt,
     utils::get_signal_name,
@@ -16,10 +19,28 @@ use tokio::io::AsyncWriteExt;
 /// 承接编译请求。
 pub async fn compile(
     config: &Config,
+    workspace: &Path,
     CompileCommand { source, output }: CompileCommand,
 ) -> Result<()> {
+    let source = match tokio::fs::canonicalize(source).await {
+        Ok(p) => p,
+        Err(e) => return Err(anyhow!(e).context("The source file should exist and be a file.")),
+    };
+    let problem: ProblemConfig = load_config(
+        &get_problem_config_dir(&source, workspace, ".cpkit")
+            .context("Failed to read problem configuration.")?
+            .join("config.toml"),
+    )
+    .await?;
     print_progress!("Compiling", "{}", source.display());
-    let mut tmp = ArtifactBuilder::new(&source, Path::new(&config.compile.compiler));
+    let mut tmp = match problem.problem_type {
+        Tranditional { name: _ } => {
+            ArtifactBuilder::new([&source], Path::new(&config.compile.compiler))
+        }
+        Interactive { header: _, grader } => {
+            ArtifactBuilder::new([&source, &grader], Path::new(&config.compile.compiler))
+        }
+    };
     if let Some(output) = output {
         tmp = tmp.artifact(&output);
     }
@@ -55,7 +76,7 @@ pub async fn run(config: &Config, RunCommand { source }: RunCommand) -> Result<(
     let output = std::env::temp_dir().join(hex::encode(sha2::Sha256::digest(content)));
     if !output.is_file() {
         print_progress!("Compiling", "{}", source.display());
-        ArtifactBuilder::new(&source, &config.compile.compiler)
+        ArtifactBuilder::new([&source], &config.compile.compiler)
             .artifact(&output)
             .args(&config.compile.flag)
             .compile()
@@ -103,20 +124,16 @@ pub async fn run(config: &Config, RunCommand { source }: RunCommand) -> Result<(
 }
 
 pub async fn init(
-    workspace: Option<&Path>,
+    workspace: &Path,
     InitCommand {
         source,
         with_checker,
         with_interactive,
     }: InitCommand,
 ) -> Result<()> {
-    let workspace = workspace.ok_or(
-        anyhow!("There isn't a workspace folder.")
-            .context("Failed to create problem configuration"),
-    )?;
     let source = match tokio::fs::canonicalize(source).await {
         Ok(p) => p,
-        Err(e) => return Err(anyhow!(e).context("The source file is invalid")),
+        Err(e) => return Err(anyhow!(e).context("The source file should exist and be a file.")),
     };
     let dir = get_problem_config_dir(&source, workspace, ".cpkit")
         .context("Failed to compute the problem configuration path.")?;

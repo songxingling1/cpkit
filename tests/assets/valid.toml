@@ -1,0 +1,10 @@
+memory-limit = 512
+time-limit = 1024
+testcase = []
+
+[problem-type]
+type = "tranditional"
+name = "valid"
+
+[checker]
+type = "builtin"

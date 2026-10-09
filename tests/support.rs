@@ -11,7 +11,23 @@ pub fn prepare_source(source: &str, dst: &Path) {
         .join("tests")
         .join("assets")
         .join(format!("{}.c", source));
-    std::fs::copy(src, dst.join(format!("{}.c", source))).expect("Failed to prepare source");
+    let cfg = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("assets")
+        .join(format!("{}.toml", source));
+    let cfgdst = dst.join(".cpkit").join(format!("{}.c", source));
+    std::fs::create_dir_all(&cfgdst).expect("Failed to prepare source");
+    std::fs::copy(&src, dst.join(format!("{}.c", source))).expect("Failed to prepare source");
+    std::fs::copy(cfg, cfgdst.join("config.toml")).expect("Failed to prepare source");
+    println!("{} {}", src.display(), cfgdst.display());
+}
+
+pub fn prepare_source_without_cfg(source: &str, dst: &Path) {
+    let src = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("assets")
+        .join(format!("{}.c", source));
+    std::fs::copy(&src, dst.join(format!("{}.c", source))).expect("Failed to prepare source");
 }
 
 pub fn prepare_configuration(dst: &Path) {

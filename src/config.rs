@@ -51,6 +51,7 @@ pub async fn load_config<T: DeserializeOwned>(path: &Path) -> Result<T, ConfigEr
 /// - `workspace`：工作区路径
 /// - `folder`：工作区下存储配置文件的文件夹
 pub fn get_problem_config_dir(path: &Path, workspace: &Path, folder: &str) -> Option<PathBuf> {
+    println!("{} {}", path.display(), workspace.display());
     let relative = path.strip_prefix(workspace).ok()?;
     let res = workspace.join(folder).join(relative);
     Some(res)

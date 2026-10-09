@@ -1,10 +1,12 @@
-use crate::support::{init_workspace, prepare_configuration, prepare_source, run_cpkit};
+use crate::support::{
+    init_workspace, prepare_configuration, prepare_source_without_cfg, run_cpkit,
+};
 
 mod support;
 #[test]
 fn success() {
     let workspace = init_workspace();
-    prepare_source("valid", workspace.path());
+    prepare_source_without_cfg("valid", workspace.path());
     prepare_configuration(workspace.path());
     run_cpkit(["init", "valid.c"], workspace.path()).success();
     let content = std::fs::read_to_string(
@@ -23,10 +25,10 @@ fn success() {
 #[test]
 fn no_workspace() {
     let workspace = init_workspace();
-    prepare_source("valid", workspace.path());
+    prepare_source_without_cfg("valid", workspace.path());
     run_cpkit(["init", "valid.c"], workspace.path())
         .failure()
-        .stderr(predicates::str::contains("There isn't a workspace folder."));
+        .stderr(predicates::str::contains("Failed to discover workspace."));
 }
 
 #[test]
@@ -35,7 +37,9 @@ fn no_valid_source() {
     prepare_configuration(workspace.path());
     run_cpkit(["init", "valid.c"], workspace.path())
         .failure()
-        .stderr(predicates::str::contains("The source file is invalid"));
+        .stderr(predicates::str::contains(
+            "The source file should exist and be a file.",
+        ));
 }
 
 #[test]
@@ -43,7 +47,7 @@ fn source_is_out_of_workspace() {
     let workspace = init_workspace();
     let dir =
         tempfile::TempDir::new_in(workspace.path()).expect("Failed to create temporary directory.");
-    prepare_source("valid", workspace.path());
+    prepare_source_without_cfg("valid", workspace.path());
     prepare_configuration(dir.path());
     run_cpkit(["init", "../valid.c"], dir.path())
         .failure()
@@ -55,7 +59,7 @@ fn source_is_out_of_workspace() {
 #[test]
 fn config_is_exist() {
     let workspace = init_workspace();
-    prepare_source("valid", workspace.path());
+    prepare_source_without_cfg("valid", workspace.path());
     prepare_configuration(workspace.path());
     let dir = workspace.path().join(".cpkit").join("valid.c");
     std::fs::create_dir_all(&dir).expect("Failed to create temporary directory");
@@ -72,7 +76,7 @@ fn config_is_exist() {
 #[test]
 fn special_problem() {
     let workspace = init_workspace();
-    prepare_source("valid", workspace.path());
+    prepare_source_without_cfg("valid", workspace.path());
     prepare_configuration(workspace.path());
     run_cpkit(["init", "valid.c", "-i", "-c"], workspace.path()).success();
     let content = std::fs::read_to_string(

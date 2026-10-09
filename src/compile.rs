@@ -8,7 +8,7 @@ use crate::utils::vecu8_to_string_lossy;
 
 /// 产物构建器，用于从源码路径生成一个产物路径。
 pub struct ArtifactBuilder {
-    source: PathBuf,
+    source: Vec<PathBuf>,
     artifact: PathBuf,
     options: Vec<OsString>,
     compiler: PathBuf,
@@ -35,9 +35,17 @@ impl ArtifactBuilder {
     /// 指定源码和编译器，生成一个产物构建器。
     /// 默认使用 `a.out` 作为产物名称，生成在当前工作目录。
     /// 默认没有编译选项。
-    pub fn new(source: &Path, compiler: &Path) -> ArtifactBuilder {
+    pub fn new<P, S>(source: S, compiler: &Path) -> ArtifactBuilder
+    where
+        P: AsRef<Path>,
+        S: AsRef<[P]>,
+    {
         ArtifactBuilder {
-            source: source.to_owned(),
+            source: source
+                .as_ref()
+                .iter()
+                .map(|p| p.as_ref().to_owned())
+                .collect(),
             artifact: PathBuf::from("a.out"),
             options: Vec::new(),
             compiler: compiler.to_owned(),
@@ -72,11 +80,14 @@ impl ArtifactBuilder {
     where
         R: AsyncFnOnce(&mut tokio::process::Command) -> tokio::io::Result<std::process::Output>,
     {
-        ensure!(self.source.is_file(), ArtifactError::InvalidSource);
+        ensure!(
+            self.source.iter().all(|p| p.is_file()),
+            ArtifactError::InvalidSource
+        );
         ensure!(!self.artifact.is_dir(), ArtifactError::InvalidArtifact);
         let mut tmp = tokio::process::Command::new(self.compiler);
         let cmd = tmp
-            .arg(self.source)
+            .args(self.source)
             .arg("-o")
             .arg(&self.artifact)
             .args(self.options);

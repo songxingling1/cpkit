@@ -20,22 +20,18 @@ pub async fn app() -> anyhow::Result<()> {
     let workspace = config::discover_workspace(
         &std::env::current_dir().context("Failed to get current directory.")?,
         "cpkit.toml",
-    );
-    let config = if let Some(w) = workspace.clone() {
-        config::load_config(&w.join("cpkit.toml"))
-            .await
-            .unwrap_or_else(|_| {
-                print_warn!("Failed to load configuration. Use default configuration.");
-                Config::default()
-            })
-    } else {
-        print_warn!("Failed to find workspace folder. Use default configuration.");
-        Config::default()
-    };
+    )
+    .context("Failed to discover workspace.")?;
+    let config = config::load_config(&workspace.join("cpkit.toml"))
+        .await
+        .unwrap_or_else(|_| {
+            print_warn!("Failed to load configuration. Use default configuration.");
+            Config::default()
+        });
     match cpkit.commands {
-        Commands::Compile(arg) => commands::compile(&config, arg).await,
+        Commands::Compile(arg) => commands::compile(&config, &workspace, arg).await,
         Commands::Run(arg) => commands::run(&config, arg).await,
-        Commands::Init(arg) => commands::init(workspace.as_deref(), arg).await,
+        Commands::Init(arg) => commands::init(&workspace, arg).await,
     }?;
     Ok(())
 }
