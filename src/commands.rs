@@ -8,12 +8,10 @@ use crate::{
     },
     print_progress,
     rusage::RusageExt,
-    utils::get_signal_name,
+    utils::{calc_file_hash, calc_run_result, to_absolute_path_checked},
 };
 use anyhow::{Context, Result, anyhow, ensure};
-use sha2::Digest;
-use std::{os::unix::process::ExitStatusExt, path::Path};
-use std::{path::PathBuf, time::Duration};
+use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
 
 /// 承接编译请求。
@@ -22,10 +20,9 @@ pub async fn compile(
     workspace: &Path,
     CompileCommand { source, output }: CompileCommand,
 ) -> Result<()> {
-    let source = match tokio::fs::canonicalize(source).await {
-        Ok(p) => p,
-        Err(e) => return Err(anyhow!(e).context("The source file should exist and be a file.")),
-    };
+    let source = to_absolute_path_checked(&source)
+        .await
+        .context("The source file should exist and be a file.")?;
     let problem_config_dir = get_problem_config_dir(&source, workspace, ".cpkit")
         .context("Failed to read problem configuration.")?;
     let problem: ProblemConfig = load_config(&problem_config_dir.join("config.toml")).await?;
@@ -56,22 +53,17 @@ pub async fn compile(
     Ok(())
 }
 
-/// 峰值内存的除数，在 macOS 上 `ru_maxrss` 单位是 byte，其他平台上是 kb
-#[cfg(not(target_os = "macos"))]
-const MAXRSS_DIVISOR: f64 = 1024.0;
-#[cfg(target_os = "macos")]
-const MAXRSS_DIVISOR: f64 = 1024.0 * 1024.0;
-
 /// 承接运行请求
 pub async fn run(config: &Config, RunCommand { source }: RunCommand) -> Result<()> {
     ensure!(
         source.is_file(),
         "The source file path should be a valid path."
     );
-    let content = tokio::fs::read(&source)
-        .await
-        .context("Failed to calc output path")?;
-    let output = std::env::temp_dir().join(hex::encode(sha2::Sha256::digest(content)));
+    let output = std::env::temp_dir().join(
+        calc_file_hash(&source)
+            .await
+            .context("Failed to calc temporary file name")?,
+    );
     if !output.is_file() {
         print_progress!("Compiling", "{}", source.display());
         ArtifactBuilder::new([&source], &config.compile.compiler)
@@ -99,24 +91,13 @@ pub async fn run(config: &Config, RunCommand { source }: RunCommand) -> Result<(
             }
         }
     };
-    let time = Duration::from_secs(res.rusage.ru_utime.tv_sec.cast_unsigned())
-        + Duration::from_secs(res.rusage.ru_stime.tv_sec.cast_unsigned())
-        + Duration::from_micros(res.rusage.ru_utime.tv_usec.cast_unsigned())
-        + Duration::from_micros(res.rusage.ru_stime.tv_usec.cast_unsigned());
-    let time = Duration::from_millis(
-        u64::try_from(time.as_millis()).expect("Program execution time exceeded."),
-    ); // 截断过于精确的部分
-    eprintln!();
-    // 显然，一个普通选手程序的运行峰值内存非常难以超过 4096TB（macOS 平台）4096PB（Linux 平台），
-    // 所以可以进行安全的强制类型转换。
-    #[allow(clippy::cast_precision_loss)]
-    let maxrss = res.rusage.ru_maxrss as f64 / MAXRSS_DIVISOR;
+    let (time, maxrss, signal) = calc_run_result(&res);
     print_progress!(
         "Finished",
         "Execution time: {}  Peak memory: {} MiB  Exit signal: {}.",
         humantime::format_duration(time).to_string(),
         maxrss,
-        get_signal_name(res.exit_status.signal())
+        signal
     );
     Ok(())
 }
@@ -129,10 +110,9 @@ pub async fn init(
         with_interactive,
     }: InitCommand,
 ) -> Result<()> {
-    let source = match tokio::fs::canonicalize(source).await {
-        Ok(p) => p,
-        Err(e) => return Err(anyhow!(e).context("The source file should exist and be a file.")),
-    };
+    let source = to_absolute_path_checked(&source)
+        .await
+        .context("The source file should exist and be a file.")?;
     let dir = get_problem_config_dir(&source, workspace, ".cpkit")
         .context("Failed to compute the problem configuration path.")?;
     tokio::fs::create_dir_all(&dir)

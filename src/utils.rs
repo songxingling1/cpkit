@@ -1,3 +1,13 @@
+use std::{
+    os::unix::process::ExitStatusExt,
+    path::{Path, PathBuf},
+    time::Duration,
+};
+
+use sha2::Digest;
+
+use crate::rusage::ExitInformation;
+
 #[must_use]
 pub fn vecu8_to_string_lossy(vec: Vec<u8>) -> String {
     match String::from_utf8(vec) {
@@ -6,9 +16,39 @@ pub fn vecu8_to_string_lossy(vec: Vec<u8>) -> String {
     }
 }
 
-/// 从数字信号获取信号名称
-pub fn get_signal_name(signal: Option<i32>) -> &'static str {
-    if let Some(sig) = signal {
+/// 相对路径转换为绝对路径，检查文件是否存在
+pub async fn to_absolute_path_checked(source: &Path) -> std::io::Result<PathBuf> {
+    match tokio::fs::canonicalize(source).await {
+        Ok(p) => Ok(p),
+        Err(e) => Err(e),
+    }
+}
+
+/// 计算文件哈希（SHA256）
+pub async fn calc_file_hash(source: &Path) -> std::io::Result<String> {
+    let content = tokio::fs::read(&source).await?;
+    Ok(hex::encode(sha2::Sha256::digest(content)))
+}
+
+/// 峰值内存的除数，在 macOS 上 `ru_maxrss` 单位是 byte，其他平台上是 kb
+#[cfg(not(target_os = "macos"))]
+const MAXRSS_DIVISOR: f64 = 1024.0;
+#[cfg(target_os = "macos")]
+const MAXRSS_DIVISOR: f64 = 1024.0 * 1024.0;
+
+pub fn calc_run_result(res: &ExitInformation) -> (Duration, f64, &'static str) {
+    let time = Duration::from_secs(res.rusage.ru_utime.tv_sec.cast_unsigned())
+        + Duration::from_secs(res.rusage.ru_stime.tv_sec.cast_unsigned())
+        + Duration::from_micros(res.rusage.ru_utime.tv_usec.cast_unsigned())
+        + Duration::from_micros(res.rusage.ru_stime.tv_usec.cast_unsigned());
+    let time = Duration::from_millis(
+        u64::try_from(time.as_millis()).expect("Program execution time exceeded."),
+    ); // 截断过于精确的部分
+    // 显然，一个普通选手程序的运行峰值内存非常难以超过 4096TB（macOS 平台）4096PB（Linux 平台），
+    // 所以可以进行安全的强制类型转换。
+    #[allow(clippy::cast_precision_loss)]
+    let maxrss = res.rusage.ru_maxrss as f64 / MAXRSS_DIVISOR;
+    let signal: &'static str = if let Some(sig) = res.exit_status.signal() {
         match sig {
             libc::SIGHUP => "Hangup",
             libc::SIGINT => "Interrupt",
@@ -43,7 +83,8 @@ pub fn get_signal_name(signal: Option<i32>) -> &'static str {
         }
     } else {
         "None"
-    }
+    };
+    (time, maxrss, signal)
 }
 
 #[cfg(test)]
