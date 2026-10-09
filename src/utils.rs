@@ -6,11 +6,6 @@ pub fn vecu8_to_string_lossy(vec: Vec<u8>) -> String {
     }
 }
 
-/// 获取文件修改时间
-pub async fn get_modify_time(path: &std::path::Path) -> std::io::Result<std::time::SystemTime> {
-    tokio::fs::metadata(path).await?.modified()
-}
-
 /// 从数字信号获取信号名称
 pub fn get_signal_name(signal: Option<i32>) -> &'static str {
     if let Some(sig) = signal {

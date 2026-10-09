@@ -4,9 +4,10 @@ use crate::{
     configuration::Config,
     print_progress,
     rusage::RusageExt,
-    utils::{get_modify_time, get_signal_name},
+    utils::get_signal_name,
 };
 use anyhow::{Context, Result, anyhow, ensure};
+use sha2::Digest;
 use std::time::Duration;
 use std::{os::unix::process::ExitStatusExt, path::Path};
 
@@ -46,17 +47,11 @@ pub async fn run(config: &Config, RunCommand { source }: RunCommand) -> Result<(
         source.is_file(),
         "The source file path should be a valid path."
     );
-    let output = source
-        .file_prefix()
-        .ok_or(anyhow!("The source file path should be a valid path."))?;
-    let output = std::env::temp_dir().join(output);
-    let source_time = get_modify_time(&source)
+    let content = tokio::fs::read(&source)
         .await
-        .context("Failed to get the source file modification time.");
-    let output_time = get_modify_time(&output)
-        .await
-        .context("Failed to get the output file modification time.");
-    if !output.is_file() || source_time? > output_time? {
+        .context("Failed to calc output path")?;
+    let output = std::env::temp_dir().join(hex::encode(sha2::Sha256::digest(content)));
+    if !output.is_file() {
         print_progress!("Compiling", "{}", source.display());
         ArtifactBuilder::new(&source, &config.compile.compiler)
             .artifact(&output)
@@ -65,7 +60,7 @@ pub async fn run(config: &Config, RunCommand { source }: RunCommand) -> Result<(
             .await
             .context("Compilation failed.")?;
     }
-    print_progress!("Running", "{}", output.display());
+    print_progress!("Running", "{} ({})", output.display(), source.display());
     let mut cmd = std::process::Command::new(output).spawn_with_rusage()?;
     let res = tokio::select! {
         res = cmd.wait() => {
