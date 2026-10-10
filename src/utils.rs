@@ -1,10 +1,5 @@
-use std::{
-    os::unix::process::ExitStatusExt,
-    path::{Path, PathBuf},
-    time::Duration,
-};
-
 use sha2::Digest;
+use std::{os::unix::process::ExitStatusExt, path::Path, time::Duration};
 
 use crate::rusage::ExitInformation;
 
@@ -13,14 +8,6 @@ pub fn vecu8_to_string_lossy(vec: Vec<u8>) -> String {
     match String::from_utf8(vec) {
         Ok(s) => s,
         Err(e) => String::from_utf8_lossy(&e.into_bytes()).into_owned(),
-    }
-}
-
-/// 相对路径转换为绝对路径，检查文件是否存在
-pub async fn to_absolute_path_checked(source: &Path) -> std::io::Result<PathBuf> {
-    match tokio::fs::canonicalize(source).await {
-        Ok(p) => Ok(p),
-        Err(e) => Err(e),
     }
 }
 

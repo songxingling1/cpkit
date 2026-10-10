@@ -43,7 +43,10 @@ pub fn prepare_configuration(dst: &Path) {
         .join("tests")
         .join("assets")
         .join("cpkit.toml");
-    std::fs::copy(src, dst.join("cpkit.toml")).expect("Failed to prepare configuration");
+    std::fs::create_dir_all(dst.join("cpkit")).expect("Failed to prepare configuration");
+    std::fs::create_dir_all(dst.join(".cpkit")).expect("Failed to prepare configuration");
+    std::fs::copy(src, dst.join("cpkit").join("configuration.toml"))
+        .expect("Failed to prepare configuration");
 }
 
 pub fn run_cpkit<I, S>(args: I, workspace: &Path) -> Assert
@@ -55,6 +58,8 @@ where
         .expect("Failed to run cpkit")
         .args(args)
         .current_dir(workspace)
+        .env("XDG_CONFIG_HOME", workspace)
+        .env("XDG_CACHE_HOME", std::env::temp_dir())
         .assert()
 }
 
@@ -68,6 +73,8 @@ where
         .current_dir(workspace)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
+        .env("XDG_CONFIG_HOME", workspace)
+        .env("XDG_CACHE_HOME", std::env::temp_dir())
         .spawn()
         .expect("Failed to run cpkit")
 }

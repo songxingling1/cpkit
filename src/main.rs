@@ -10,28 +10,19 @@ use anyhow::Context;
 use clap::Parser;
 use cli::{Commands, Cpkit};
 
-use crate::configuration::Config;
-
 /// CLI 入口
 /// # Errors
 /// 当 CLI 运行过程中产生了任何错误，返回 `Error`，除非主动 `panic!`。
 pub async fn app() -> anyhow::Result<()> {
     let cpkit = Cpkit::parse();
-    let workspace = config::discover_workspace(
-        &std::env::current_dir().context("Failed to get current directory.")?,
-        "cpkit.toml",
-    )
-    .context("Failed to discover workspace.")?;
-    let config = config::load_config(&workspace.join("cpkit.toml"))
+    let mut ctx = config::Context::new().context("Failed to load context.")?;
+    ctx.load_global_config()
         .await
-        .unwrap_or_else(|_| {
-            print_warn!("Failed to load configuration. Use default configuration.");
-            Config::default()
-        });
+        .context("Failed to load global config")?;
     match cpkit.commands {
-        Commands::Compile(arg) => commands::compile(&config, &workspace, arg).await,
-        Commands::Run(arg) => commands::run(&config, arg).await,
-        Commands::Init(arg) => commands::init(&workspace, arg).await,
+        Commands::Compile(arg) => commands::compile(&mut ctx, arg).await,
+        Commands::Run(arg) => commands::run(&mut ctx, arg).await,
+        Commands::Init(arg) => commands::init(&mut ctx, arg).await,
     }?;
     Ok(())
 }

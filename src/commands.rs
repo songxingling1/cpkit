@@ -1,41 +1,32 @@
 use crate::{
     cli::{CompileCommand, InitCommand, RunCommand},
     compile::ArtifactBuilder,
-    config::{get_problem_config_dir, load_config},
-    configuration::{
-        Config, ProblemConfig,
-        ProblemType::{Interactive, Tranditional},
-    },
+    configuration::ProblemConfig,
     print_progress,
     rusage::RusageExt,
-    utils::{calc_file_hash, calc_run_result, to_absolute_path_checked},
+    utils::calc_run_result,
 };
 use anyhow::{Context, Result, anyhow, ensure};
 use std::path::{Path, PathBuf};
-use tokio::io::AsyncWriteExt;
 
 /// 承接编译请求。
 pub async fn compile(
-    config: &Config,
-    workspace: &Path,
+    ctx: &mut crate::config::Context,
     CompileCommand { source, output }: CompileCommand,
 ) -> Result<()> {
-    let source = to_absolute_path_checked(&source)
+    let token = ctx
+        .get_problem_token(&source)
+        .context("Failed to find problem configuration.")?;
+    ctx.load_problem_config(&token)
         .await
-        .context("The source file should exist and be a file.")?;
-    let problem_config_dir = get_problem_config_dir(&source, workspace, ".cpkit")
-        .context("Failed to read problem configuration.")?;
-    let problem: ProblemConfig = load_config(&problem_config_dir.join("config.toml")).await?;
+        .context("Failed to apply problem configuration.")?;
     print_progress!("Compiling", "{}", source.display());
-    let mut tmp = match problem.problem_type {
-        Tranditional { name: _ } => {
-            ArtifactBuilder::new([&source], Path::new(&config.compile.compiler))
-        }
-        Interactive { header: _, grader } => ArtifactBuilder::new(
-            [&source, &problem_config_dir.join(grader)],
-            Path::new(&config.compile.compiler),
-        ),
-    };
+    // 已经 Apply 了 problem 并且将错误情况上报了，所以这里一定是 Some
+    let config = ctx.get_global_config().unwrap();
+    let mut tmp = ArtifactBuilder::new(
+        ctx.get_source_list().unwrap(),
+        Path::new(&config.compile.compiler),
+    );
     if let Some(output) = output {
         tmp = tmp.artifact(&output);
     }
@@ -54,19 +45,26 @@ pub async fn compile(
 }
 
 /// 承接运行请求
-pub async fn run(config: &Config, RunCommand { source }: RunCommand) -> Result<()> {
+pub async fn run(
+    ctx: &mut crate::config::Context,
+    RunCommand { source }: RunCommand,
+) -> Result<()> {
     ensure!(
         source.is_file(),
         "The source file path should be a valid path."
     );
-    let output = std::env::temp_dir().join(
-        calc_file_hash(&source)
-            .await
-            .context("Failed to calc temporary file name")?,
-    );
+    let token = ctx
+        .get_problem_token(&source)
+        .context("Failed to find problem configuration.")?;
+    ctx.load_problem_config(&token)
+        .await
+        .context("Failed to apply problem configuration.")?;
+    // 已经 Apply 了 problem 并且将错误情况上报了，所以这里一定是 Some
+    let config = ctx.get_global_config().unwrap();
+    let output = ctx.get_output_path().await.context("Compilation failed.")?;
     if !output.is_file() {
         print_progress!("Compiling", "{}", source.display());
-        ArtifactBuilder::new([&source], &config.compile.compiler)
+        ArtifactBuilder::new(ctx.get_source_list().unwrap(), &config.compile.compiler)
             .artifact(&output)
             .args(&config.compile.flag)
             .compile()
@@ -103,24 +101,17 @@ pub async fn run(config: &Config, RunCommand { source }: RunCommand) -> Result<(
 }
 
 pub async fn init(
-    workspace: &Path,
+    ctx: &mut crate::config::Context,
     InitCommand {
         source,
         with_checker,
         with_interactive,
     }: InitCommand,
 ) -> Result<()> {
-    let source = to_absolute_path_checked(&source)
-        .await
-        .context("The source file should exist and be a file.")?;
-    let dir = get_problem_config_dir(&source, workspace, ".cpkit")
-        .context("Failed to compute the problem configuration path.")?;
-    tokio::fs::create_dir_all(&dir)
-        .await
-        .context("Failed to create problem configuration")?;
-    let mut file = tokio::fs::File::create_new(dir.join("config.toml"))
-        .await
-        .context("Failed to create problem configuration")?;
+    ensure!(source.is_file(), "The source file is not found.");
+    let token = ctx
+        .get_problem_token(&source)
+        .context("Failed to calc configuration location.")?;
     let mut config = ProblemConfig::default();
     if with_checker {
         config.checker = crate::configuration::Checker::Special {
@@ -133,13 +124,9 @@ pub async fn init(
             grader: PathBuf::new(),
         }
     }
-    file.write_all(
-        toml::to_string_pretty(&config)
-            .context("Failed to generate configuration template.")?
-            .as_bytes(),
-    )
-    .await
-    .context("Failed to write configuration.")?;
+    ctx.write_problem_config(&token, &config)
+        .await
+        .context("Failed to write problem configuration")?;
     print_progress!(
         "Finished",
         "Created configuration for {}.",
