@@ -14,6 +14,7 @@ pub async fn compile(
     ctx: &mut crate::config::Context,
     CompileCommand { source, output }: CompileCommand,
 ) -> Result<()> {
+    ensure!(source.is_file(), "The source file is not found.");
     let token = ctx
         .get_problem_token(&source)
         .context("Failed to find problem configuration.")?;

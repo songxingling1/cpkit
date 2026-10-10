@@ -86,9 +86,6 @@ impl Context {
         if self.problem_config.is_some() {
             return Err(ContextError::AlreadyExists("Problem config"));
         }
-        if !self.workspace.join(problem).is_file() {
-            return Err(ContextError::NotFound("The source file"));
-        }
         let cfg = self
             .workspace
             .join(".cpkit")
