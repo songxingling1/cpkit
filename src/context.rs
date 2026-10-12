@@ -127,7 +127,7 @@ impl Context {
         let config = self
             .workspace
             .join(".cpkit")
-            .join(&problem)
+            .join(problem)
             .join("config.toml");
         let problem = self.workspace.join(self.get_problem_token(problem)?);
         Ok(ProblemContext {

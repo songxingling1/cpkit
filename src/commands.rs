@@ -3,8 +3,7 @@ use crate::{
     compile::ArtifactBuilder,
     configuration::ProblemConfig,
     print_progress,
-    rusage::RusageExt,
-    utils::calc_run_result,
+    runner::{ExitInformation, RunnerExt},
 };
 use anyhow::{Context, Result, anyhow, ensure};
 use std::path::{Path, PathBuf};
@@ -78,8 +77,12 @@ pub async fn run(ctx: &crate::context::Context, RunCommand { source }: RunComman
             .context("Compilation failed.")?;
     }
     print_progress!("Running", "{} ({})", output.display(), source.display());
-    let mut cmd = std::process::Command::new(output).spawn_with_rusage()?;
-    let res = tokio::select! {
+    let mut cmd = std::process::Command::new(output).spawn_with_runner()?;
+    let ExitInformation {
+        time_usage,
+        memory_usage,
+        status,
+    } = tokio::select! {
         res = cmd.wait() => {
             res?
         },
@@ -95,13 +98,12 @@ pub async fn run(ctx: &crate::context::Context, RunCommand { source }: RunComman
             }
         }
     };
-    let (time, maxrss, signal) = calc_run_result(&res);
     print_progress!(
         "Finished",
         "Execution time: {}  Peak memory: {} MiB  Exit signal: {}.",
-        humantime::format_duration(time).to_string(),
-        maxrss,
-        signal
+        humantime::format_duration(*time_usage).to_string(),
+        memory_usage,
+        status
     );
     Ok(())
 }
