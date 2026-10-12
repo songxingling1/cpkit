@@ -3,6 +3,7 @@ use assert_cmd::{Command, assert::Assert, cargo::cargo_bin};
 use std::{ffi::OsStr, path::Path};
 
 pub fn init_workspace() -> tempfile::TempDir {
+    std::fs::create_dir_all(std::env::temp_dir().join("cpkit")).expect("Failed to init workspace");
     tempfile::TempDir::new().expect("Failed to init temporary directory")
 }
 

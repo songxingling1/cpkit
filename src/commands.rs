@@ -11,21 +11,24 @@ use std::path::{Path, PathBuf};
 
 /// 承接编译请求。
 pub async fn compile(
-    ctx: &mut crate::config::Context,
+    ctx: &crate::context::Context,
     CompileCommand { source, output }: CompileCommand,
 ) -> Result<()> {
     ensure!(source.is_file(), "The source file is not found.");
-    let token = ctx
-        .get_problem_token(&source)
-        .context("Failed to find problem configuration.")?;
-    ctx.load_problem_config(&token)
-        .await
-        .context("Failed to apply problem configuration.")?;
+    let pctx = {
+        let mut pctx = ctx
+            .get_problem_context(&source)
+            .context("Failed to load problem context.")?;
+        pctx.load_config()
+            .await
+            .context("Failed to load problem configuration.")?;
+        pctx
+    };
     print_progress!("Compiling", "{}", source.display());
     // 已经 Apply 了 problem 并且将错误情况上报了，所以这里一定是 Some
-    let config = ctx.get_global_config().unwrap();
+    let config = ctx.get_config().unwrap();
     let mut tmp = ArtifactBuilder::new(
-        ctx.get_source_list().unwrap(),
+        pctx.get_source_list().unwrap(),
         Path::new(&config.compile.compiler),
     );
     if let Some(output) = output {
@@ -46,26 +49,28 @@ pub async fn compile(
 }
 
 /// 承接运行请求
-pub async fn run(
-    ctx: &mut crate::config::Context,
-    RunCommand { source }: RunCommand,
-) -> Result<()> {
+pub async fn run(ctx: &crate::context::Context, RunCommand { source }: RunCommand) -> Result<()> {
     ensure!(
         source.is_file(),
         "The source file path should be a valid path."
     );
-    let token = ctx
-        .get_problem_token(&source)
-        .context("Failed to find problem configuration.")?;
-    ctx.load_problem_config(&token)
-        .await
-        .context("Failed to apply problem configuration.")?;
+    let pctx = {
+        let mut pctx = ctx
+            .get_problem_context(&source)
+            .context("Failed to load problem context.")?;
+        pctx.load_config()
+            .await
+            .context("Failed to load problem configuration.")?;
+        pctx
+    };
     // 已经 Apply 了 problem 并且将错误情况上报了，所以这里一定是 Some
-    let config = ctx.get_global_config().unwrap();
-    let output = ctx.get_output_path().await.context("Compilation failed.")?;
+    let config = ctx.get_config().unwrap();
+    let output = ctx
+        .get_cache_dir()
+        .join(pctx.get_hash().await.context("Compilation failed.")?);
     if !output.is_file() {
         print_progress!("Compiling", "{}", source.display());
-        ArtifactBuilder::new(ctx.get_source_list().unwrap(), &config.compile.compiler)
+        ArtifactBuilder::new(pctx.get_source_list().unwrap(), &config.compile.compiler)
             .artifact(&output)
             .args(&config.compile.flag)
             .compile()
@@ -102,7 +107,7 @@ pub async fn run(
 }
 
 pub async fn init(
-    ctx: &mut crate::config::Context,
+    ctx: &crate::context::Context,
     InitCommand {
         source,
         with_checker,
@@ -110,9 +115,9 @@ pub async fn init(
     }: InitCommand,
 ) -> Result<()> {
     ensure!(source.is_file(), "The source file is not found.");
-    let token = ctx
-        .get_problem_token(&source)
-        .context("Failed to calc configuration location.")?;
+    let pctx = ctx
+        .get_problem_context(&source)
+        .context("Failed to load problem context.")?;
     let mut config = ProblemConfig::default();
     if with_checker {
         config.checker = crate::configuration::Checker::Special {
@@ -125,7 +130,7 @@ pub async fn init(
             grader: PathBuf::new(),
         }
     }
-    ctx.write_problem_config(&token, &config)
+    pctx.write_problem_config(&config)
         .await
         .context("Failed to write problem configuration")?;
     print_progress!(

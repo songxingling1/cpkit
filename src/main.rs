@@ -1,8 +1,8 @@
 mod cli;
 mod commands;
 mod compile;
-mod config;
 mod configuration;
+mod context;
 mod print;
 mod rusage;
 mod utils;
@@ -15,14 +15,17 @@ use cli::{Commands, Cpkit};
 /// 当 CLI 运行过程中产生了任何错误，返回 `Error`，除非主动 `panic!`。
 pub async fn app() -> anyhow::Result<()> {
     let cpkit = Cpkit::parse();
-    let mut ctx = config::Context::new().context("Failed to load context.")?;
-    ctx.load_global_config()
-        .await
-        .context("Failed to load global config")?;
+    let ctx = {
+        let mut ctx = context::Context::new().context("Failed to load context.")?;
+        ctx.load_config()
+            .await
+            .context("Failed to load global config")?;
+        ctx
+    };
     match cpkit.commands {
-        Commands::Compile(arg) => commands::compile(&mut ctx, arg).await,
-        Commands::Run(arg) => commands::run(&mut ctx, arg).await,
-        Commands::Init(arg) => commands::init(&mut ctx, arg).await,
+        Commands::Compile(arg) => commands::compile(&ctx, arg).await,
+        Commands::Run(arg) => commands::run(&ctx, arg).await,
+        Commands::Init(arg) => commands::init(&ctx, arg).await,
     }?;
     Ok(())
 }

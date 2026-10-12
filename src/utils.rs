@@ -1,5 +1,4 @@
-use sha2::Digest;
-use std::{os::unix::process::ExitStatusExt, path::Path, time::Duration};
+use std::{os::unix::process::ExitStatusExt, time::Duration};
 
 use crate::rusage::ExitInformation;
 
@@ -9,12 +8,6 @@ pub fn vecu8_to_string_lossy(vec: Vec<u8>) -> String {
         Ok(s) => s,
         Err(e) => String::from_utf8_lossy(&e.into_bytes()).into_owned(),
     }
-}
-
-/// 计算文件哈希（SHA256）
-pub async fn calc_file_hash(source: &Path) -> std::io::Result<String> {
-    let content = tokio::fs::read(&source).await?;
-    Ok(hex::encode(sha2::Sha256::digest(content)))
 }
 
 /// 峰值内存的除数，在 macOS 上 `ru_maxrss` 单位是 byte，其他平台上是 kb

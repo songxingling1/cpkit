@@ -28,7 +28,7 @@ fn no_workspace() {
     prepare_source_without_cfg("valid", workspace.path());
     run_cpkit(["init", "valid.c"], workspace.path())
         .failure()
-        .stderr(predicates::str::contains("Workspace is not found."));
+        .stderr(predicates::str::contains("Workspace not found."));
 }
 
 #[test]
@@ -49,7 +49,10 @@ fn source_is_out_of_workspace() {
     prepare_configuration(dir.path());
     run_cpkit(["init", "../valid.c"], dir.path())
         .failure()
-        .stderr(predicates::str::contains("The source path is invalid."));
+        .stderr(predicates::str::contains("Invalid input:"))
+        .stderr(predicates::str::contains(
+            "The file may no longer be in the current workspace.",
+        ));
 }
 
 #[test]
