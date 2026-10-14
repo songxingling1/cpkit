@@ -59,8 +59,8 @@ where
         .expect("Failed to run cpkit")
         .args(args)
         .current_dir(workspace)
-        .env("XDG_CONFIG_HOME", workspace)
-        .env("XDG_CACHE_HOME", std::env::temp_dir())
+        .env("CPKIT_TEST_CONFIG_HOME", workspace)
+        .env("CPKIT_TEST_CACHE_HOME", std::env::temp_dir())
         .assert()
 }
 
@@ -74,8 +74,8 @@ where
         .current_dir(workspace)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
-        .env("XDG_CONFIG_HOME", workspace)
-        .env("XDG_CACHE_HOME", std::env::temp_dir())
+        .env("CPKIT_TEST_CONFIG_HOME", workspace)
+        .env("CPKIT_TEST_CACHE_HOME", std::env::temp_dir())
         .spawn()
         .expect("Failed to run cpkit")
 }

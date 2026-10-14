@@ -30,7 +30,8 @@ pub enum ContextError {
 pub struct Context {
     current: PathBuf,
     workspace: PathBuf,
-    project_dir: ProjectDirs,
+    config_file: PathBuf,
+    cache_dir: PathBuf,
     global: Option<Config>,
 }
 
@@ -60,10 +61,19 @@ impl Context {
             Self::discover_workspace(&current, ".cpkit").ok_or(ContextError::WorkspaceNotFound)?;
         let project_dir = ProjectDirs::from("", "supermasarada", "cpkit")
             .ok_or(ContextError::ConfigurationNotFound)?;
+        let config_file = match std::env::var("CPKIT_TEST_CONFIG_HOME") {
+            Ok(d) => PathBuf::from(d).join("cpkit").join("configuration.toml"),
+            Err(_) => project_dir.config_dir().join("configuration.toml"),
+        };
+        let cache_dir = match std::env::var("CPKIT_TEST_CONFIG_HOME") {
+            Ok(d) => PathBuf::from(d),
+            Err(_) => project_dir.cache_dir().to_owned(),
+        };
         Ok(Context {
             current,
             workspace,
-            project_dir,
+            config_file,
+            cache_dir,
             global: None,
         })
     }
@@ -72,8 +82,7 @@ impl Context {
         if self.global.is_some() {
             return Ok(());
         }
-        let cfg = self.project_dir.config_dir().join("configuration.toml");
-        let content = match tokio::fs::read_to_string(&cfg).await {
+        let content = match tokio::fs::read_to_string(&self.config_file).await {
             Ok(content) => content,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
                 return Err(ContextError::ConfigurationNotFound);
@@ -120,7 +129,7 @@ impl Context {
     }
     /// 获取缓存路径
     pub fn get_cache_dir(&self) -> &Path {
-        self.project_dir.cache_dir()
+        &self.cache_dir
     }
     /// 获取题目上下文
     pub fn get_problem_context(&self, problem: &Path) -> Result<ProblemContext, ContextError> {
