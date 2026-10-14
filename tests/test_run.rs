@@ -22,12 +22,9 @@ fn success() {
         .stdout(predicate::eq("Hello, World!"));
 }
 
+#[cfg(unix)]
 #[test]
 fn ctrl_c() {
-    #[cfg(windows)]
-    {
-        return 0;
-    }
     let workspace = init_workspace();
     prepare_source("longtime", workspace.path());
     prepare_configuration(workspace.path());

@@ -1,10 +1,17 @@
 use super::*;
 use std::process::ExitStatus;
+#[cfg(unix)]
 fn exit_status(code: i32) -> ExitStatus {
     use std::os::unix::process::ExitStatusExt;
     // Unix 的 from_raw 接收的是 raw wait status。
     // 正常退出码通常左移 8 位。
     std::process::ExitStatus::from_raw(code << 8)
+}
+#[cfg(windows)]
+pub fn exit_status(code: i32) -> ExitStatus {
+    use std::os::windows::process::ExitStatusExt;
+    // Windows 的 from_raw 接收的是直接的退出码 (u32)
+    ExitStatus::from_raw(code as u32)
 }
 fn ok_output() -> tokio::io::Result<std::process::Output> {
     Ok(std::process::Output {
