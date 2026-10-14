@@ -1,6 +1,7 @@
 mod support;
 use crate::support::{
-    init_workspace, prepare_configuration, prepare_header, prepare_source, prepare_source_without_cfg, run_cpkit, run_cpkit_with_child,
+    init_workspace, prepare_configuration, prepare_header, prepare_source,
+    prepare_source_without_cfg, run_cpkit, run_cpkit_with_child,
 };
 use assert_cmd::assert::OutputAssertExt;
 use predicates::prelude::*;
@@ -23,6 +24,10 @@ fn success() {
 
 #[test]
 fn ctrl_c() {
+    #[cfg(windows)]
+    {
+        return 0;
+    }
     let workspace = init_workspace();
     prepare_source("longtime", workspace.path());
     prepare_configuration(workspace.path());

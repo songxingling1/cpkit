@@ -1,0 +1,38 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install C++ compiler (Ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes g++
+
+      - name: Install C++ compiler (macOS)
+        if: runner.os == 'macOS'
+        run: xcode-select --install || true
+
+      - name: Install C++ compiler (Windows)
+        if: runner.os == 'Windows'
+        uses: egor-tensin/setup-mingw@v3
+        with:
+          platform: x64
+
+      - name: Run tests
+        run: cargo test --all-targets
