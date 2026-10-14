@@ -1,10 +1,14 @@
 mod support;
+#[cfg(unix)]
+use crate::support::run_cpkit_with_child;
 use crate::support::{
     init_workspace, prepare_configuration, prepare_header, prepare_source,
-    prepare_source_without_cfg, run_cpkit, run_cpkit_with_child,
+    prepare_source_without_cfg, run_cpkit,
 };
+#[cfg(unix)]
 use assert_cmd::assert::OutputAssertExt;
 use predicates::prelude::*;
+#[cfg(unix)]
 use std::time::Duration;
 
 #[test]

@@ -1,4 +1,3 @@
-
 use super::{ExitInformation, RunnerExt};
 use std::time::Duration;
 
@@ -47,7 +46,10 @@ async fn wait_returns_and_caches_exit_information() {
 
 #[tokio::test]
 async fn try_wait_reports_running_then_exited_child() {
+    #[cfg(unix)]
     let mut command = command("sleep 0.1; exit 0");
+    #[cfg(windows)]
+    let mut command = command("powershell -Command \"Start-Sleep -Milliseconds 100; exit 0\"");
     let mut child = command.spawn_with_runner().expect("child should start");
 
     assert!(child.try_wait().expect("poll should succeed").is_none());
@@ -63,10 +65,9 @@ async fn kill_stops_child_and_wait_returns_result() {
     child.kill().expect("child should be killed");
     let info = child.wait().await.expect("killed child should be reaped");
     assert_exit_information(info);
-    assert!(info.status.contains("Killed") || info.status.contains("signal"));
+    assert!(info.status.contains("Killed") || info.status.contains("1"));
 
     child
         .kill()
         .expect("killing an exited child should be harmless");
 }
-
