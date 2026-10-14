@@ -1,6 +1,6 @@
 mod support;
 use crate::support::{
-    init_workspace, prepare_configuration, prepare_source, run_cpkit, run_cpkit_with_child,
+    init_workspace, prepare_configuration, prepare_header, prepare_source, prepare_source_without_cfg, run_cpkit, run_cpkit_with_child,
 };
 use assert_cmd::assert::OutputAssertExt;
 use predicates::prelude::*;
@@ -39,4 +39,21 @@ fn ctrl_c() {
         .stderr(predicate::str::contains("Exit signal"))
         .stderr(predicate::str::contains("warning").not())
         .stderr(predicate::str::contains("error").not());
+}
+
+#[test]
+fn interactive() {
+    let workspace = init_workspace();
+    prepare_source("interactive", workspace.path());
+    prepare_source_without_cfg("grader", workspace.path());
+    prepare_header("interactive", workspace.path());
+    prepare_configuration(workspace.path());
+    run_cpkit(["run", "interactive.c"], workspace.path())
+        .success()
+        .stderr(predicate::str::contains("Execution time"))
+        .stderr(predicate::str::contains("Peak memory"))
+        .stderr(predicate::str::contains("Exit signal"))
+        .stderr(predicate::str::contains("warning").not())
+        .stderr(predicate::str::contains("error").not())
+        .stdout(predicate::eq("Interactive!"));
 }
