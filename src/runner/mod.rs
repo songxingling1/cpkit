@@ -65,3 +65,7 @@ impl RunnerExt for tokio::process::Command {
         RunnerChild::new(self.spawn()?)
     }
 }
+
+#[cfg(test)]
+#[path = "../tests/test_runner.rs"]
+mod tests;

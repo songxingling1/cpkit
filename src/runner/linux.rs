@@ -168,3 +168,16 @@ pub fn waitid(pid: u32, options: libc::c_int) -> Result<Option<(ExitStatus, rusa
     let ru = unsafe { ru.assume_init() };
     Ok(Some((exit, ru)))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::strsignal;
+    use std::borrow::Cow;
+
+    #[test]
+    fn strsignal_maps_common_and_unknown_signals() {
+        assert_eq!(strsignal(Some(libc::SIGTERM)), Cow::Borrowed("Terminated"));
+        assert_eq!(strsignal(None), Cow::Borrowed("None"));
+        assert_eq!(strsignal(Some(12345)).as_ref(), "Unknown signal (12345)");
+    }
+}
