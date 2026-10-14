@@ -77,7 +77,7 @@ pub async fn run(ctx: &crate::context::Context, RunCommand { source }: RunComman
             .context("Compilation failed.")?;
     }
     print_progress!("Running", "{} ({})", output.display(), source.display());
-    let mut cmd = std::process::Command::new(output).spawn_with_runner()?;
+    let mut cmd = tokio::process::Command::new(output).spawn_with_runner()?;
     let ExitInformation {
         time_usage,
         memory_usage,
