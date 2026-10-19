@@ -1,8 +1,8 @@
 mod support;
 
 use crate::support::{
-    init_workspace, prepare_configuration, prepare_header, prepare_source,
-    prepare_source_without_cfg, run_artifact, run_cpkit,
+    assert_artifact, assert_artifact_not, init_workspace, prepare_configuration, prepare_header,
+    prepare_source, prepare_source_without_cfg, run_artifact, run_cpkit,
 };
 use predicates::prelude::*;
 
@@ -16,7 +16,7 @@ fn success() {
         .stderr(predicate::str::contains("Successfully compiled"))
         .stderr(predicate::str::contains("warning").not())
         .stderr(predicate::str::contains("error").not());
-    assert!(workspace.path().join("valid").is_file());
+    assert_artifact(&workspace.path().join("valid"));
     run_artifact("valid", workspace.path())
         .success()
         .stdout(predicate::eq("Hello, World!"));
@@ -32,7 +32,7 @@ fn success_without_set_output() {
         .stderr(predicate::str::contains("Successfully compiled"))
         .stderr(predicate::str::contains("warning").not())
         .stderr(predicate::str::contains("error").not());
-    assert!(workspace.path().join("a.out").is_file());
+    assert_artifact(&workspace.path().join("a.out"));
     run_artifact("a.out", workspace.path())
         .success()
         .stdout(predicate::eq("Hello, World!"));
@@ -45,7 +45,7 @@ fn source_not_found() {
     run_cpkit(["compile", "valid.c", "-o", "valid"], workspace.path())
         .failure()
         .stderr(predicate::str::contains("The source file is not found."));
-    assert!(!workspace.path().join("valid").exists());
+    assert_artifact_not(&workspace.path().join("valid"));
 }
 
 #[test]
@@ -57,7 +57,7 @@ fn invalid_source() {
         .failure()
         .stderr(predicate::str::contains("Compilation failed"))
         .stderr(predicate::str::contains("error: expected"));
-    assert!(!workspace.path().join("valid").exists());
+    assert_artifact_not(&workspace.path().join("valid"));
 }
 
 #[test]
@@ -75,7 +75,7 @@ fn interactive() {
     .stderr(predicate::str::contains("Successfully compiled"))
     .stderr(predicate::str::contains("warning").not())
     .stderr(predicate::str::contains("error").not());
-    assert!(workspace.path().join("interactive").is_file());
+    assert_artifact_not(&workspace.path().join("interactive"));
     run_artifact("interactive", workspace.path())
         .success()
         .stdout(predicate::eq("Interactive!"));

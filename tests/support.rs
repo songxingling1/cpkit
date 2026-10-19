@@ -83,3 +83,15 @@ where
 pub fn run_artifact(name: &str, workspace: &Path) -> Assert {
     Command::new(workspace.join(name)).assert()
 }
+
+pub fn assert_artifact(path: &Path) -> () {
+    #[cfg(target_os = "linux")]
+    let path = path.with_extension("exe");
+    assert!(path.is_file())
+}
+
+pub fn assert_artifact_not(path: &Path) -> () {
+    #[cfg(target_os = "linux")]
+    let path = path.with_extension("exe");
+    assert!(!path.exists())
+}
