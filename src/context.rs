@@ -69,6 +69,7 @@ impl Context {
             Ok(d) => PathBuf::from(d),
             Err(_) => project_dir.cache_dir().to_owned(),
         };
+        let _ = std::fs::create_dir_all(&cache_dir);
         Ok(Context {
             current,
             workspace,

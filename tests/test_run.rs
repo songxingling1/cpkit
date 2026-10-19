@@ -9,7 +9,7 @@ use crate::support::{
 use assert_cmd::assert::OutputAssertExt;
 use predicates::prelude::*;
 #[cfg(unix)]
-use std::time::Duration;
+use std::io::{BufRead, BufReader};
 
 #[test]
 fn success() {
@@ -32,9 +32,18 @@ fn ctrl_c() {
     let workspace = init_workspace();
     prepare_source("longtime", workspace.path());
     prepare_configuration(workspace.path());
-    let child = run_cpkit_with_child(["run", "longtime.c"], workspace.path());
-    std::thread::sleep(Duration::from_millis(50));
-    unsafe { libc::kill(child.id() as i32, libc::SIGINT) };
+    let mut child = run_cpkit_with_child(["run", "longtime.c"], workspace.path());
+    let pid = child.id();
+    let stderr = child.stderr.as_mut();
+    let reader = BufReader::new(stderr.unwrap());
+    for line in reader.lines() {
+        if let Ok(l) = line
+            && l.contains("Running")
+        {
+            unsafe { libc::kill(pid as i32, libc::SIGINT) };
+            break;
+        }
+    }
     child
         .wait_with_output()
         .expect("Failed to get output")

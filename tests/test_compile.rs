@@ -75,7 +75,7 @@ fn interactive() {
     .stderr(predicate::str::contains("Successfully compiled"))
     .stderr(predicate::str::contains("warning").not())
     .stderr(predicate::str::contains("error").not());
-    assert_artifact_not(&workspace.path().join("interactive"));
+    assert_artifact(&workspace.path().join("interactive"));
     run_artifact("interactive", workspace.path())
         .success()
         .stdout(predicate::eq("Interactive!"));

@@ -85,13 +85,13 @@ pub fn run_artifact(name: &str, workspace: &Path) -> Assert {
 }
 
 pub fn assert_artifact(path: &Path) -> () {
-    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "windows")]
     let path = path.with_extension("exe");
     assert!(path.is_file())
 }
 
 pub fn assert_artifact_not(path: &Path) -> () {
-    #[cfg(target_os = "linux")]
+    #[cfg(target_os = "windows")]
     let path = path.with_extension("exe");
     assert!(!path.exists())
 }

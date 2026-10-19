@@ -5,7 +5,7 @@ use crate::{
     print_progress,
     runner::{ExitInformation, RunnerExt},
 };
-use anyhow::{Context, Result, anyhow, ensure};
+use anyhow::{Context, Result, ensure};
 use std::path::{Path, PathBuf};
 
 /// 承接编译请求。
@@ -80,8 +80,12 @@ pub async fn run(ctx: &crate::context::Context, RunCommand { source }: RunComman
             .await
             .context("Compilation failed.")?;
     }
+    #[cfg(unix)]
+    let mut ctrl_c = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
+    #[cfg(windows)]
+    let mut ctrl_c = tokio::signal::windows::ctrl_c()?;
+    let mut cmd = tokio::process::Command::new(&output).spawn_with_runner()?;
     print_progress!("Running", "{} ({})", output.display(), source.display());
-    let mut cmd = tokio::process::Command::new(output).spawn_with_runner()?;
     let ExitInformation {
         time_usage,
         memory_usage,
@@ -90,16 +94,9 @@ pub async fn run(ctx: &crate::context::Context, RunCommand { source }: RunComman
         res = cmd.wait() => {
             res?
         },
-        sig = tokio::signal::ctrl_c() => {
-            match sig {
-                Ok(()) => {
-                    cmd.kill()?;
-                    cmd.wait().await?
-                },
-                Err(e) => {
-                    return Err(anyhow!(e).context("Failed to install CTRL+C signal handler"));
-                }
-            }
+        _ = ctrl_c.recv() => {
+            cmd.kill()?;
+            cmd.wait().await?
         }
     };
     print_progress!(
