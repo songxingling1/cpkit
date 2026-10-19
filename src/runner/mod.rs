@@ -1,10 +1,13 @@
 use std::io::Result;
 
+mod model;
+
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "linux")]
 mod linux_pidfd;
-mod model;
+#[cfg(target_os = "macos")]
+mod macos;
 #[cfg(target_os = "windows")]
 mod windows;
 
@@ -14,6 +17,8 @@ pub use model::ExitInformation;
 use linux::RunnerChild as SignalChild;
 #[cfg(target_os = "linux")]
 use linux_pidfd::RunnerChild as PidfdChild;
+#[cfg(target_os = "macos")]
+pub use macos::RunnerChild;
 #[cfg(target_os = "windows")]
 pub use windows::RunnerChild;
 
