@@ -33,7 +33,12 @@ fn success_without_set_output() {
         .stderr(predicate::str::contains("warning").not())
         .stderr(predicate::str::contains("error").not());
     assert_artifact(&workspace.path().join("a.out"));
+    #[cfg(unix)]
     run_artifact("a.out", workspace.path())
+        .success()
+        .stdout(predicate::eq("Hello, World!"));
+    #[cfg(windows)]
+    run_artifact("a.exe", workspace.path())
         .success()
         .stdout(predicate::eq("Hello, World!"));
 }
