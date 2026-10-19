@@ -31,6 +31,8 @@ pub async fn compile(
         Path::new(&config.compile.compiler),
     );
     if let Some(output) = output {
+        #[cfg(target_os = "windows")]
+        let output = output.with_extension("exe");
         tmp = tmp.artifact(&output);
     }
     let res = tmp
@@ -67,6 +69,8 @@ pub async fn run(ctx: &crate::context::Context, RunCommand { source }: RunComman
     let output = ctx
         .get_cache_dir()
         .join(pctx.get_hash().await.context("Compilation failed.")?);
+    #[cfg(target_os = "windows")]
+    let output = output.with_extension("exe");
     if !output.is_file() {
         print_progress!("Compiling", "{}", source.display());
         ArtifactBuilder::new(pctx.get_source_list().unwrap(), &config.compile.compiler)

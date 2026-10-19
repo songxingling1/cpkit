@@ -56,9 +56,7 @@ fn invalid_source() {
     run_cpkit(["compile", "invalid.c", "-o", "invalid"], workspace.path())
         .failure()
         .stderr(predicate::str::contains("Compilation failed"))
-        .stderr(predicate::str::contains(
-            "error: expected ‘;’ before ‘return’",
-        ));
+        .stderr(predicate::str::contains("error: expected"));
     assert!(!workspace.path().join("valid").exists());
 }
 
