@@ -38,13 +38,17 @@ impl ArtifactBuilder {
         P: AsRef<Path>,
         S: AsRef<[P]>,
     {
+        #[cfg(unix)]
+        let artifact = PathBuf::from("a.out");
+        #[cfg(windows)]
+        let artifact = PathBuf::from("a.exe");
         ArtifactBuilder {
             source: source
                 .as_ref()
                 .iter()
                 .map(|p| p.as_ref().to_owned())
                 .collect(),
-            artifact: PathBuf::from("a.out"),
+            artifact,
             options: Vec::new(),
             compiler: compiler.to_owned(),
         }
