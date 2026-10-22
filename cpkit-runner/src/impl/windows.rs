@@ -1,9 +1,8 @@
 use std::{
     os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle},
-    ptr::null_mut,
     sync::{
         Arc,
-        atomic::{AtomicBool, AtomicU64, Ordering},
+        atomic::{AtomicU64, Ordering},
     },
 };
 
@@ -19,7 +18,6 @@ use windows::Win32::{
 use crate::reactor::{Poll, Wake};
 struct ProcessData {
     token: usize,
-    is_inqueue: AtomicBool,
     _callback: Box<dyn Fn() + Send + Sync>,
     wait_handle: HANDLE,
     generation: u64,
@@ -52,17 +50,11 @@ impl ProcessPool {
         let cb = Box::new(move || {
             if let Some(inner) = data.get(&key)
                 && inner.generation == generation
-                && let Ok(_) = inner.is_inqueue.compare_exchange(
-                    false,
-                    true,
-                    Ordering::Acquire,
-                    Ordering::Relaxed,
-                )
             {
                 let _ = tx.send((key, generation));
             }
         });
-        let mut wait_handle = HANDLE(null_mut());
+        let mut wait_handle = HANDLE(std::ptr::null_mut());
         let Entry::Vacant(entry) = self.data.entry(key) else {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::AlreadyExists,
@@ -81,7 +73,6 @@ impl ProcessPool {
         };
         entry.insert(ProcessData {
             token,
-            is_inqueue: AtomicBool::new(false),
             _callback: cb,
             wait_handle,
             generation,
@@ -135,12 +126,10 @@ impl Poll for ProcessPool {
             vec![self.rx.recv().unwrap()] // 结构体本身保留了一个发送端，不可能出现 `Err`
                 .into_iter()
                 .chain(self.rx.try_iter())
-                .take(self.rx.len() + 1)
                 .filter_map(|t| {
                     if let Some(inner) = self.data.get(&t.0)
                         && inner.generation == t.1
                     {
-                        inner.is_inqueue.store(false, Ordering::Release);
                         Some(inner.token)
                     } else {
                         None
