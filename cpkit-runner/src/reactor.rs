@@ -12,7 +12,6 @@ use std::{
 
 use atomic_waker::AtomicWaker;
 use slab::Slab;
-use tokio::sync::oneshot;
 
 pub trait Poll: Sized {
     type Source;
@@ -34,7 +33,7 @@ pub trait Wake: Sized {
 enum RunnerRequest<S> {
     Register {
         shared: Arc<ScheduledRunner<S>>,
-        sender: oneshot::Sender<Result<usize>>,
+        sender: crossbeam_channel::Sender<Result<usize>>,
     },
     Deregister {
         token: usize,
@@ -160,8 +159,8 @@ impl<P: Poll> Drop for RunnerReactor<P> {
 }
 
 impl<P: Poll> RunnerReactorHandle<P> {
-    pub(crate) async fn register(&self, source: P::Source) -> Result<Registration<P>> {
-        let (tx, rx) = oneshot::channel();
+    pub(crate) fn register(&self, source: P::Source) -> Result<Registration<P>> {
+        let (tx, rx) = crossbeam_channel::bounded(1);
         let shared = Arc::new(ScheduledRunner::new(source));
         self.request
             .send(RunnerRequest::Register {
@@ -171,7 +170,7 @@ impl<P: Poll> RunnerReactorHandle<P> {
             .map_err(|_| std::io::Error::other("reactor closed"))?;
         self.waker.wake()?;
         let token = rx
-            .await
+            .recv()
             .map_err(|_| std::io::Error::other("reactor closed"))??;
         Ok(Registration {
             token,
