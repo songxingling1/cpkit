@@ -37,7 +37,7 @@ fn no_valid_source() {
     prepare_configuration(workspace.path());
     run_cpkit(["init", "valid.c"], workspace.path())
         .failure()
-        .stderr(predicates::str::contains("The source file is not found."));
+        .stderr(predicates::str::contains("Source file not found"));
 }
 
 #[test]
