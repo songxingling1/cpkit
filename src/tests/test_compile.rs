@@ -29,9 +29,13 @@ async fn success() {
     let artifact = dir.path().join("artifact");
     let built = Artifact::builder()
         .source(vec![source.to_path_buf()])
-        .arg("-O2")
-        .args(["-Wall", "-std=c++14"])
-        .artifact(artifact.clone())
+        .options(
+            vec!["-O2", "-Wall", "-std=c++14"]
+                .iter()
+                .map(Into::into)
+                .collect(),
+        )
+        .output(artifact.clone())
         .compiler(PathBuf::from("gcc"))
         .compile_with(async |cmd| {
             assert_eq!(cmd.as_std().get_program(), "gcc");
@@ -88,7 +92,7 @@ async fn artifact_is_a_directory() {
     let err = Artifact::builder()
         .source(vec![source.to_path_buf()])
         .compiler(PathBuf::from("gcc"))
-        .artifact(artifact.path().to_owned())
+        .output(artifact.path().to_owned())
         .compile_with(async |_| ok_output())
         .await
         .expect_err("a directory artifact should fail");
@@ -149,7 +153,7 @@ async fn artifact_not_found() {
     let err = Artifact::builder()
         .source(vec![source.to_path_buf()])
         .compiler(PathBuf::from("gcc"))
-        .artifact(artifact)
+        .output(artifact)
         .compile_with(async |_| ok_output())
         .await
         .expect_err("a not found artifact should fail");
@@ -172,7 +176,7 @@ async fn double_source() {
     let built = Artifact::builder()
         .source(vec![source.to_path_buf(), source2.to_path_buf()])
         .compiler(PathBuf::from("gcc"))
-        .artifact(artifact.clone())
+        .output(artifact.clone())
         .compile_with(async |cmd| {
             let args: Vec<OsString> = cmd.as_std().get_args().map(|s| s.to_owned()).collect();
             assert_eq!(args[0], source.as_os_str());

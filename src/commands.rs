@@ -48,8 +48,16 @@ async fn build_artifact(
     Artifact::builder()
         .source(sources)
         .compiler(config.compile.compiler.clone())
-        .maybe_artifact(output.map(with_exe_suffix))
-        .args(&config.compile.flag)
+        .maybe_output(output.map(with_exe_suffix))
+        .options(
+            config
+                .compile
+                .flag
+                .iter()
+                .map(Clone::clone)
+                .map(Into::into)
+                .collect(),
+        )
         .compile()
         .await
         .context("Compilation failed.")

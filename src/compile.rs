@@ -1,19 +1,16 @@
 use anyhow::{Context, Result, ensure};
-use std::{
-    ffi::{OsStr, OsString},
-    path::PathBuf,
-};
+use std::{ffi::OsString, path::PathBuf};
 
 /// 产物构建器，用于从源码路径生成一个产物路径。
 #[derive(bon::Builder)]
 #[builder(finish_fn(vis = "", name = build_internal))]
 pub struct Artifact {
-    #[builder(field)]
+    #[builder(default = Vec::new())]
     options: Vec<OsString>,
     source: Vec<PathBuf>,
     #[cfg_attr(unix, builder(default = PathBuf::from("a.out")))]
     #[cfg_attr(windows, builder(default = PathBuf::from("a.exe")))]
-    artifact: PathBuf,
+    output: PathBuf,
     compiler: PathBuf,
 }
 
@@ -34,25 +31,6 @@ pub enum ArtifactError {
     ArtifactNotExist,
 }
 
-impl<S: artifact_builder::State> ArtifactBuilder<S> {
-    /// 附加一个编译选项。
-    #[allow(dead_code)]
-    pub fn arg<O: AsRef<OsStr>>(mut self, option: O) -> Self {
-        self.options.push(option.as_ref().to_owned());
-        self
-    }
-    /// 附加多个编译选项。
-    pub fn args<I, O>(mut self, option: I) -> Self
-    where
-        I: IntoIterator<Item = O>,
-        O: AsRef<OsStr>,
-    {
-        self.options
-            .extend(option.into_iter().map(|o| o.as_ref().to_owned()));
-        self
-    }
-}
-
 impl<S: artifact_builder::IsComplete> ArtifactBuilder<S> {
     /// 编译
     ///
@@ -67,20 +45,20 @@ impl<S: artifact_builder::IsComplete> ArtifactBuilder<S> {
             this.source.iter().all(|p| p.is_file()),
             ArtifactError::InvalidSource
         );
-        ensure!(!this.artifact.is_dir(), ArtifactError::InvalidArtifact);
+        ensure!(!this.output.is_dir(), ArtifactError::InvalidArtifact);
         let mut tmp = tokio::process::Command::new(this.compiler);
         let cmd = tmp
             .args(this.source)
             .arg("-o")
-            .arg(&this.artifact)
+            .arg(&this.output)
             .args(this.options);
         let res = runner(cmd).await.context("Failed to start the compiler.")?;
         ensure!(
             res.status.success(),
             ArtifactError::CompilationFailed(vecu8_to_string_lossy(res.stderr))
         );
-        ensure!(this.artifact.is_file(), ArtifactError::ArtifactNotExist);
-        Ok(this.artifact)
+        ensure!(this.output.is_file(), ArtifactError::ArtifactNotExist);
+        Ok(this.output)
     }
     /// 编译得到产物。
     pub async fn compile(self) -> Result<PathBuf> {

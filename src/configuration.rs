@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::{path::PathBuf};
 
 /// 编译相关配置
 #[derive(Deserialize)]
