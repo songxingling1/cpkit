@@ -1,14 +1,19 @@
 use anyhow::{Context, Result, ensure};
 use std::{
     ffi::{OsStr, OsString},
-    path::{Path, PathBuf},
+    path::PathBuf,
 };
 
 /// 产物构建器，用于从源码路径生成一个产物路径。
-pub struct ArtifactBuilder {
-    source: Vec<PathBuf>,
-    artifact: PathBuf,
+#[derive(bon::Builder)]
+#[builder(finish_fn(vis = "", name = build_internal))]
+pub struct Artifact {
+    #[builder(field)]
     options: Vec<OsString>,
+    source: Vec<PathBuf>,
+    #[cfg_attr(unix, builder(default = PathBuf::from("a.out")))]
+    #[cfg_attr(windows, builder(default = PathBuf::from("a.exe")))]
+    artifact: PathBuf,
     compiler: PathBuf,
 }
 
@@ -29,30 +34,7 @@ pub enum ArtifactError {
     ArtifactNotExist,
 }
 
-impl ArtifactBuilder {
-    /// 指定源码和编译器，生成一个产物构建器。
-    /// 默认使用 `a.out` 作为产物名称，生成在当前工作目录。
-    /// 默认没有编译选项。
-    pub fn new<P, S>(source: S, compiler: &Path) -> ArtifactBuilder
-    where
-        P: AsRef<Path>,
-        S: AsRef<[P]>,
-    {
-        #[cfg(unix)]
-        let artifact = PathBuf::from("a.out");
-        #[cfg(windows)]
-        let artifact = PathBuf::from("a.exe");
-        ArtifactBuilder {
-            source: source
-                .as_ref()
-                .iter()
-                .map(|p| p.as_ref().to_owned())
-                .collect(),
-            artifact,
-            options: Vec::new(),
-            compiler: compiler.to_owned(),
-        }
-    }
+impl<S: artifact_builder::State> ArtifactBuilder<S> {
     /// 附加一个编译选项。
     #[allow(dead_code)]
     pub fn arg<O: AsRef<OsStr>>(mut self, option: O) -> Self {
@@ -69,11 +51,9 @@ impl ArtifactBuilder {
             .extend(option.into_iter().map(|o| o.as_ref().to_owned()));
         self
     }
-    /// 指定生成物位置。
-    pub fn artifact(mut self, artifact: &Path) -> Self {
-        artifact.clone_into(&mut self.artifact);
-        self
-    }
+}
+
+impl<S: artifact_builder::IsComplete> ArtifactBuilder<S> {
     /// 编译
     ///
     /// # 参数
@@ -82,24 +62,25 @@ impl ArtifactBuilder {
     where
         R: AsyncFnOnce(&mut tokio::process::Command) -> tokio::io::Result<std::process::Output>,
     {
+        let this = self.build_internal();
         ensure!(
-            self.source.iter().all(|p| p.is_file()),
+            this.source.iter().all(|p| p.is_file()),
             ArtifactError::InvalidSource
         );
-        ensure!(!self.artifact.is_dir(), ArtifactError::InvalidArtifact);
-        let mut tmp = tokio::process::Command::new(self.compiler);
+        ensure!(!this.artifact.is_dir(), ArtifactError::InvalidArtifact);
+        let mut tmp = tokio::process::Command::new(this.compiler);
         let cmd = tmp
-            .args(self.source)
+            .args(this.source)
             .arg("-o")
-            .arg(&self.artifact)
-            .args(self.options);
+            .arg(&this.artifact)
+            .args(this.options);
         let res = runner(cmd).await.context("Failed to start the compiler.")?;
         ensure!(
             res.status.success(),
             ArtifactError::CompilationFailed(vecu8_to_string_lossy(res.stderr))
         );
-        ensure!(self.artifact.is_file(), ArtifactError::ArtifactNotExist);
-        Ok(self.artifact)
+        ensure!(this.artifact.is_file(), ArtifactError::ArtifactNotExist);
+        Ok(this.artifact)
     }
     /// 编译得到产物。
     pub async fn compile(self) -> Result<PathBuf> {

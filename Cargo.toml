@@ -16,6 +16,7 @@ sha2 = "0.11.0"
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 toml = "1.1.6"
+bon = { workspace = true }
 cpkit-task = { path = "./cpkit-task/" }
 
 [dev-dependencies]

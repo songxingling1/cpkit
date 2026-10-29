@@ -1,6 +1,6 @@
 use crate::{
     cli::{CompileCommand, InitCommand, RunCommand},
-    compile::ArtifactBuilder,
+    compile::Artifact,
     configuration::{Checker, ProblemConfig, ProblemType},
     print_progress,
 };
@@ -45,11 +45,10 @@ async fn build_artifact(
     let sources = pctx
         .get_source_list()
         .context("Source list not available; this indicates a bug.")?;
-    let mut builder = ArtifactBuilder::new(sources, Path::new(&config.compile.compiler));
-    if let Some(output) = output {
-        builder = builder.artifact(&with_exe_suffix(output));
-    }
-    builder
+    Artifact::builder()
+        .source(sources)
+        .compiler(config.compile.compiler.clone())
+        .maybe_artifact(output.map(with_exe_suffix))
         .args(&config.compile.flag)
         .compile()
         .await

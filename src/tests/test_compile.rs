@@ -27,10 +27,12 @@ async fn success() {
         .expect("Failed to create a temporary source file.")
         .into_temp_path();
     let artifact = dir.path().join("artifact");
-    let built = ArtifactBuilder::new([&source], Path::new("gcc"))
+    let built = Artifact::builder()
+        .source(vec![source.to_path_buf()])
         .arg("-O2")
         .args(["-Wall", "-std=c++14"])
-        .artifact(&artifact)
+        .artifact(artifact.clone())
+        .compiler(PathBuf::from("gcc"))
         .compile_with(async |cmd| {
             assert_eq!(cmd.as_std().get_program(), "gcc");
             let args: Vec<OsString> = cmd.as_std().get_args().map(|s| s.to_owned()).collect();
@@ -50,7 +52,9 @@ async fn success() {
 }
 #[tokio::test]
 async fn source_not_found() {
-    let err = ArtifactBuilder::new([Path::new("/the/source/file/not/found")], Path::new("gcc"))
+    let err = Artifact::builder()
+        .source(vec![PathBuf::from("/the/source/file/not/found")])
+        .compiler(PathBuf::from("gcc"))
         .compile_with(async |_| ok_output())
         .await
         .expect_err("A not found file should fail");
@@ -63,7 +67,9 @@ async fn source_not_found() {
 #[tokio::test]
 async fn source_is_a_directory() {
     let source = tempfile::TempDir::new().expect("Failed to create a temporary directory.");
-    let err = ArtifactBuilder::new([source.path()], Path::new("gcc"))
+    let err = Artifact::builder()
+        .source(vec![source.path().to_owned()])
+        .compiler(PathBuf::from("gcc"))
         .compile_with(async |_| ok_output())
         .await
         .expect_err("a directory source should fail");
@@ -79,8 +85,10 @@ async fn artifact_is_a_directory() {
         .expect("Failed to create a temporary source file.")
         .into_temp_path();
     let artifact = tempfile::TempDir::new().expect("Failed to create a temporary directory.");
-    let err = ArtifactBuilder::new([&source], Path::new("gcc"))
-        .artifact(artifact.path())
+    let err = Artifact::builder()
+        .source(vec![source.to_path_buf()])
+        .compiler(PathBuf::from("gcc"))
+        .artifact(artifact.path().to_owned())
         .compile_with(async |_| ok_output())
         .await
         .expect_err("a directory artifact should fail");
@@ -95,7 +103,9 @@ async fn failed_to_start_compiler() {
     let source = tempfile::NamedTempFile::new()
         .expect("Failed to create a temporary source file.")
         .into_temp_path();
-    let err = ArtifactBuilder::new([&source], Path::new("gcc"))
+    let err = Artifact::builder()
+        .source(vec![source.to_path_buf()])
+        .compiler(PathBuf::from("gcc"))
         .compile_with(async |_| Err(std::io::Error::other("test")))
         .await
         .expect_err("a invalid compiler should fail");
@@ -111,7 +121,9 @@ async fn compilation_failed() {
     let source = tempfile::NamedTempFile::new()
         .expect("Failed to create a temporary source file.")
         .into_temp_path();
-    let err = ArtifactBuilder::new([&source], Path::new("gcc"))
+    let err = Artifact::builder()
+        .source(vec![source.to_path_buf()])
+        .compiler(PathBuf::from("gcc"))
         .compile_with(async |_| {
             Ok(std::process::Output {
                 status: exit_status(1),
@@ -134,8 +146,10 @@ async fn artifact_not_found() {
         .expect("Failed to create a temporary source file.")
         .into_temp_path();
     let artifact = dir.path().join("artifact");
-    let err = ArtifactBuilder::new([&source], Path::new("gcc"))
-        .artifact(&artifact)
+    let err = Artifact::builder()
+        .source(vec![source.to_path_buf()])
+        .compiler(PathBuf::from("gcc"))
+        .artifact(artifact)
         .compile_with(async |_| ok_output())
         .await
         .expect_err("a not found artifact should fail");
@@ -155,8 +169,10 @@ async fn double_source() {
         .expect("Failed to create a temporary source file.")
         .into_temp_path();
     let artifact = dir.path().join("artifact");
-    let built = ArtifactBuilder::new([&source, &source2], Path::new("gcc"))
-        .artifact(&artifact)
+    let built = Artifact::builder()
+        .source(vec![source.to_path_buf(), source2.to_path_buf()])
+        .compiler(PathBuf::from("gcc"))
+        .artifact(artifact.clone())
         .compile_with(async |cmd| {
             let args: Vec<OsString> = cmd.as_std().get_args().map(|s| s.to_owned()).collect();
             assert_eq!(args[0], source.as_os_str());
