@@ -49,7 +49,7 @@ fn source_not_found() {
     prepare_configuration(workspace.path());
     run_cpkit(["compile", "valid.c", "-o", "valid"], workspace.path())
         .failure()
-        .stderr(predicate::str::contains("The source file is not found."));
+        .stderr(predicate::str::contains("Source file not found: valid.c"));
     assert_artifact_not(&workspace.path().join("valid"));
 }
 
