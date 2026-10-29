@@ -13,9 +13,10 @@ hex = "0.4.3"
 humantime = "2.4.0"
 serde = { version = "1.0.229", features = ["derive"] }
 sha2 = "0.11.0"
-thiserror = "2.0.21"
+thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 toml = "1.1.6"
+cpkit-task = { path = "./cpkit-task/" }
 
 [dev-dependencies]
 assert_cmd = "2.2.2"
@@ -41,8 +42,10 @@ rustix = "1.1.5"
 
 [workspace]
 resolver = "3"
-members = ["cpkit-runner"]
+members = ["cpkit-task"]
 
 [workspace.dependencies]
 tokio = "1.53.2"
 windows = "0.62.2"
+thiserror = "2.0.21"
+bon = "3.10.3"

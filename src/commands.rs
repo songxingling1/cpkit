@@ -3,9 +3,9 @@ use crate::{
     compile::ArtifactBuilder,
     configuration::ProblemConfig,
     print_progress,
-    runner::{ExitInformation, RunnerExt},
 };
 use anyhow::{Context, Result, ensure};
+use cpkit_task::{Task, TaskResult};
 use std::path::{Path, PathBuf};
 
 /// 承接编译请求。
@@ -84,27 +84,26 @@ pub async fn run(ctx: &crate::context::Context, RunCommand { source }: RunComman
     let mut ctrl_c = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())?;
     #[cfg(windows)]
     let mut ctrl_c = tokio::signal::windows::ctrl_c()?;
-    let mut cmd = tokio::process::Command::new(&output).spawn_with_runner()?;
+    let mut tasks = cpkit_task::TaskSet::new();
+    let cancel = tasks
+        .spawn(Task::builder().id(1).executable(output.clone()).build())
+        .context("Failed to spawn executable.")?;
     print_progress!("Running", "{} ({})", output.display(), source.display());
-    let ExitInformation {
-        time_usage,
-        memory_usage,
-        status,
-    } = tokio::select! {
-        res = cmd.wait() => {
-            res?
+    let TaskResult { task: _, usage } = tokio::select! {
+        res = tasks.next() => {
+            res.context("Failed to get result.")?
         },
         _ = ctrl_c.recv() => {
-            cmd.kill()?;
-            cmd.wait().await?
+            cancel.cancel();
+            tasks.next().await.context("Failed to get result.")?
         }
     };
     print_progress!(
         "Finished",
         "Execution time: {}  Peak memory: {} MiB  Exit signal: {}.",
-        humantime::format_duration(*time_usage).to_string(),
-        memory_usage,
-        status
+        humantime::format_duration(usage.time).to_string(),
+        usage.memory,
+        usage.status
     );
     Ok(())
 }

@@ -4,7 +4,6 @@ mod compile;
 mod configuration;
 mod context;
 mod print;
-mod runner;
 use anyhow::Context;
 use clap::Parser;
 use cli::{Commands, Cpkit};
