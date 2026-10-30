@@ -29,7 +29,10 @@ async fn load_problem_context(ctx: &Context, source: &Path) -> Result<ProblemCon
 /// Windows 上自动补 `.exe`，其它平台原样返回。
 fn with_exe_suffix(path: PathBuf) -> PathBuf {
     #[cfg(target_os = "windows")]
-    path.with_extension("exe");
+    {
+        let mut path = path;
+        path.set_extension("exe");
+    }
     path
 }
 
