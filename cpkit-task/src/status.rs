@@ -6,16 +6,16 @@ mod unix {
 
     #[derive(Debug)]
     pub enum PrintableStatus {
-        None,
         Known(Signal),
         Unknown(NonZeroI32),
+        ExitCode(i32),
     }
 
     impl Display for PrintableStatus {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             match self {
-                Self::None => f.write_str("None"),
                 Self::Unknown(val) => write!(f, "Unknown Signal({val})"),
+                Self::ExitCode(code) => write!(f, "{code}"),
                 Self::Known(sig) => f.write_str(match *sig {
                     Signal::HUP => "Hangup",
                     Signal::INT => "Interrupt",
@@ -56,3 +56,22 @@ mod unix {
 
 #[cfg(unix)]
 pub use unix::PrintableStatus;
+
+#[cfg(windows)]
+mod windows {
+    use std::fmt::Display;
+
+    pub struct PrintableStatus(pub u32);
+    impl Display for PrintableStatus {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            if self.0 & 0x80000000 != 0 {
+                write!(f, "{:#x}", self.0)
+            } else {
+                write!(f, "{}", self.0)
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+pub use windows::PrintableStatus;

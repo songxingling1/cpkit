@@ -22,7 +22,6 @@ impl TaskSet {
         let (res_tx, res_rx) = unbounded();
         let cancel = CancellationToken::new();
         let worker_cancel = cancel.clone();
-        #[cfg(target_os = "linux")]
         thread::spawn(move || {
             async_io::block_on(crate::imp::process(req_rx, res_tx, worker_cancel));
         });

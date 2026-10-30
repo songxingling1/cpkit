@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 futures-channel = "0.3.34"
 futures-util = "0.3.34"
-rustix = { version = "1.1.5", features = ["process"] }
+rustix = { workspace = true, features = ["process"] }
 tokio-util = "0.7.20"
 thiserror = { workspace = true }
 bon = { workspace = true }
@@ -16,3 +16,10 @@ async-io = "2.6.0"
 linux-raw-sys = "0.12.1"
 rustix-libc-wrappers = { version = "0.1.1", features = ["process"] }
 syscalls = "0.8.1"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_System_Threading",
+  "Win32_System_ProcessStatus",
+] }

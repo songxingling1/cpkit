@@ -8,8 +8,7 @@ use std::{
 };
 
 use async_io::{Async, Timer};
-use futures_channel::mpsc::{UnboundedReceiver, UnboundedSender};
-use futures_util::{FutureExt, StreamExt, select, stream::FuturesUnordered};
+use futures_util::{FutureExt, select};
 use linux_raw_sys::general::{
     CLD_DUMPED, CLD_KILLED, P_PIDFD, WEXITED, WNOHANG, rusage, siginfo_t,
 };
@@ -60,7 +59,7 @@ fn get_result(fd: BorrowedFd<'_>, flag: u32) -> io::Result<Option<Usage>> {
             PrintableStatus::Known,
         )
     } else {
-        PrintableStatus::None
+        PrintableStatus::ExitCode(status)
     };
     let rusage = unsafe { rusage.assume_init() };
     let time = Duration::from_secs(rusage.ru_utime.tv_sec.cast_unsigned())
@@ -76,7 +75,7 @@ fn get_result(fd: BorrowedFd<'_>, flag: u32) -> io::Result<Option<Usage>> {
     }))
 }
 
-async fn run_task(task: Task, token: CancellationToken) -> Result<TaskResult, TaskError> {
+pub async fn run_task(task: Task, token: CancellationToken) -> Result<TaskResult, TaskError> {
     let fd = spawn(&task)?;
     let mut deadline = task.time_limit.map(|d| Instant::now() + d);
     loop {
@@ -97,31 +96,6 @@ async fn run_task(task: Task, token: CancellationToken) -> Result<TaskResult, Ta
                 task: task.id,
                 usage,
             });
-        }
-    }
-}
-
-pub async fn process(
-    mut request: UnboundedReceiver<(Task, CancellationToken)>,
-    result: UnboundedSender<Result<TaskResult, TaskError>>,
-    cancel: CancellationToken,
-) {
-    let mut futs = FuturesUnordered::new();
-    loop {
-        select! {
-            req = request.recv().fuse() => {
-                let Ok((task, token)) = req else {
-                    break;
-                };
-                futs.push(run_task(task, token));
-            },
-            res = futs.select_next_some().fuse() => {
-                let _ = result.unbounded_send(res);
-            },
-            () = cancel.cancelled().fuse() => {
-                while let Some(res) = futs.next().await { let _ = result.unbounded_send(res); }
-                break;
-            }
         }
     }
 }
