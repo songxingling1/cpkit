@@ -30,7 +30,7 @@ fn spawn(task: &Task) -> io::Result<Async<OwnedFd>> {
         .and_then(Async::new_nonblocking)
 }
 
-fn get_result(fd: BorrowedFd<'_>, flag: u32) -> io::Result<Option<Usage>> {
+fn get_result(fd: BorrowedFd<'_>) -> io::Result<Option<Usage>> {
     let mut siginfo = MaybeUninit::<siginfo_t>::zeroed();
     let mut rusage = MaybeUninit::<rusage>::uninit();
     unsafe {
@@ -39,7 +39,7 @@ fn get_result(fd: BorrowedFd<'_>, flag: u32) -> io::Result<Option<Usage>> {
             P_PIDFD as usize,
             fd.as_raw_fd().cast_unsigned() as usize,
             siginfo.as_mut_ptr() as usize,
-            (flag | WEXITED) as usize,
+            (WNOHANG | WEXITED) as usize,
             rusage.as_mut_ptr() as usize,
         )
     }?;
@@ -87,11 +87,10 @@ pub async fn run_task(task: Task, token: CancellationToken) -> Result<TaskResult
             }
             () = token.cancelled().fuse() => {
                 let _ = pidfd_send_signal(fd.as_fd(), Signal::KILL);
-                let usage = get_result(fd.as_fd(), 0)?.expect("A blocking waitid shouldn't return None.");
-                return Ok(TaskResult { task: task.id, usage });
+                deadline = None;
             }
         }
-        if let Some(usage) = get_result(fd.as_fd(), WNOHANG)? {
+        if let Some(usage) = get_result(fd.as_fd())? {
             return Ok(TaskResult {
                 task: task.id,
                 usage,
